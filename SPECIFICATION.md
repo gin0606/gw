@@ -197,7 +197,13 @@ worktree を格納する親ディレクトリ。
 |---|---|---|
 | `worktrees_dir` | worktree を格納するベースディレクトリ（絶対パスまたはリポジトリルートからの相対パス） | `../<repo-name>-worktrees/` |
 
-**ファイルフォーマット:** 未定（技術選定時に決定）。
+**ファイルフォーマット:** TOML
+
+**設定例:**
+
+```toml
+worktrees_dir = "../my-worktrees"
+```
 
 ---
 
