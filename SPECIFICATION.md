@@ -215,6 +215,8 @@ worktree を格納する親ディレクトリ。
 
 **ファイルフォーマット:** TOML
 
+**未知のキー:** 前方互換性のため、未知のキーは無視する。
+
 **設定例:**
 
 ```toml
@@ -242,6 +244,8 @@ worktrees_dir = "../my-worktrees"
 |---|---|
 | エラー | `gw: error: <message>` |
 | 警告 | `gw: warning: <message>` |
+
+git コマンド由来のエラーは `gw: error:` でラップせず、git の出力をそのまま stderr に流す。
 
 ### 6.3 主要なエラーケース
 
