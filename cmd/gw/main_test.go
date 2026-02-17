@@ -92,6 +92,110 @@ func TestVersion(t *testing.T) {
 	}
 }
 
+// --- gw init ---
+
+func TestInit_Basic(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	stdout, stderr, exitCode := runGw(t, repo.Root, "init")
+
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", exitCode, stderr)
+	}
+
+	if stdout != "" {
+		t.Errorf("expected empty stdout, got: %q", stdout)
+	}
+
+	if !strings.Contains(stderr, "Initialized .gw/ in") {
+		t.Errorf("expected initialization message in stderr, got: %q", stderr)
+	}
+
+	// Check .gw/config exists with correct content
+	configPath := filepath.Join(repo.Root, ".gw", "config")
+	configBytes, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("failed to read .gw/config: %v", err)
+	}
+	configContent := string(configBytes)
+
+	repoName := filepath.Base(repo.Root)
+	expectedEntry := fmt.Sprintf(`worktrees_dir = "../%s-worktrees"`, repoName)
+	if !strings.Contains(configContent, expectedEntry) {
+		t.Errorf("config should contain %q, got: %q", expectedEntry, configContent)
+	}
+
+	// Check .gw/hooks/post-add exists with execute permission
+	hookPath := filepath.Join(repo.Root, ".gw", "hooks", "post-add")
+	info, err := os.Stat(hookPath)
+	if err != nil {
+		t.Fatalf("failed to stat .gw/hooks/post-add: %v", err)
+	}
+	if info.Mode().Perm()&0111 == 0 {
+		t.Errorf("post-add hook should be executable, got mode: %v", info.Mode())
+	}
+}
+
+func TestInit_AlreadyExists(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	// Create .gw/ directory
+	if err := os.MkdirAll(filepath.Join(repo.Root, ".gw"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	_, stderr, exitCode := runGw(t, repo.Root, "init")
+
+	if exitCode != 1 {
+		t.Errorf("exit code = %d, want 1", exitCode)
+	}
+	if !strings.Contains(stderr, ".gw/ already exists") {
+		t.Errorf("expected already exists error, got: %q", stderr)
+	}
+}
+
+func TestInit_OutsideGitRepo(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	_, _, exitCode := runGw(t, tmpDir, "init")
+
+	if exitCode != 1 {
+		t.Errorf("exit code = %d, want 1", exitCode)
+	}
+}
+
+func TestInit_ExtraArgs(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	_, stderr, exitCode := runGw(t, repo.Root, "init", "extra")
+
+	if exitCode != 1 {
+		t.Errorf("exit code = %d, want 1", exitCode)
+	}
+	if !strings.Contains(stderr, "gw: error:") {
+		t.Errorf("expected 'gw: error:' format in stderr, got: %q", stderr)
+	}
+}
+
+func TestInit_FromWorktree(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	wtPath := repo.CreateWorktree("wt-for-init", "init-branch")
+
+	_, stderr, exitCode := runGw(t, wtPath, "init")
+
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", exitCode, stderr)
+	}
+
+	// .gw/ should be created in the main repo root, not in the worktree
+	if _, err := os.Stat(filepath.Join(repo.Root, ".gw", "config")); err != nil {
+		t.Errorf(".gw/config should exist in repo root: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(wtPath, ".gw")); err == nil {
+		t.Error(".gw/ should not be created in worktree directory")
+	}
+}
+
 // --- Phase 5: gw add ---
 
 func TestAdd_NewBranch(t *testing.T) {
