@@ -117,10 +117,10 @@ add / rm で利用するフック実行基盤。
   - [ ] 処理フロー:
     1. リポジトリルート検出
     2. worktree パス計算・衝突チェック（`ValidatePath` でディレクトリ既存ならエラー）
-    3. ローカルブランチ存在確認・引数検証（既存ブランチ + `--from` → エラー）
+    3. ローカルブランチ存在確認・引数検証（既存ブランチ + `--from` → エラー）・起点 ref 解決（新規ブランチ + `--from` 省略時: `RemoteRefExists` で `origin/<デフォルトブランチ>` の存在を確認し、存在すればそれを使用、なければ `<デフォルトブランチ>` にフォールバック）
     4. `pre-add` フック実行（リポジトリルートで）
     5. `git worktree add` 実行
-       - 新規: `git worktree add <path> -b <branch> [<ref>]`（`<ref>` 省略時は `RemoteRefExists` で `origin/<デフォルトブランチ>` の存在を確認し、存在すればそれを使用、なければ `<デフォルトブランチ>` にフォールバック）
+       - 新規: `git worktree add <path> -b <branch> <ref>`
        - 既存: `git worktree add <path> <branch>`
     6. `post-add` フック実行（worktree ディレクトリで）
     7. 作成先パスを stdout に出力
@@ -274,10 +274,10 @@ git 統合テスト・E2E テストで共通利用する一時 git 環境のセ�
 
 | テスト | 分類 |
 |--------|------|
-| 存在しないブランチ名を指定、`--from` 省略 → `git worktree add <path> -b <branch> origin/<デフォルトブランチ>` が実行され、stdout に `<base_dir>/<sanitized-branch>` の絶対パスが出力される (§1.1 処理フロー4, 6) | E2E |
+| 存在しないブランチ名を指定、`--from` 省略 → `git worktree add <path> -b <branch> origin/<デフォルトブランチ>` が実行され、stdout に `<base_dir>/<sanitized-branch>` の絶対パスが出力される (§1.1 処理フロー5, 7) | E2E |
 | 存在しないブランチ名 + `--from v1.0` → `git worktree add <path> -b <branch> v1.0` が実行され、stdout に絶対パスが出力される (§1.1) | E2E |
-| 存在しないブランチ名、`--from` 省略、`origin/<デフォルトブランチ>` が存在しない → `<デフォルトブランチ>` にフォールバック (§1.1 処理フロー4) | E2E |
-| 既存ブランチ名を指定、`--from` なし → `git worktree add <path> <branch>` が実行され、stdout に絶対パスが出力される (§1.1 処理フロー4) | E2E |
+| 存在しないブランチ名、`--from` 省略、`origin/<デフォルトブランチ>` が存在しない → `<デフォルトブランチ>` にフォールバック (§1.1 処理フロー3) | E2E |
+| 既存ブランチ名を指定、`--from` なし → `git worktree add <path> <branch>` が実行され、stdout に絶対パスが出力される (§1.1 処理フロー5) | E2E |
 | 既存ブランチ名 + `--from` 指定 → エラー、終了コード 1 (§1.1 処理フロー3, §6.3) | E2E |
 | 既存ブランチ名 + `--from` 指定 → stderr のエラー出力が `gw: error: ...` フォーマットに従う (§6.2) | E2E |
 | git リポジトリ外で `gw add` を実行 → エラー、終了コード 1 (§6.3) | E2E |
