@@ -34,7 +34,7 @@ CI runs `go vet ./...` and `go test ./...`.
 ```
 cmd/gw/main.go          Entry point. Parses args and dispatches to subcommands
 internal/
-  cmd/                   Subcommand implementations (add, rm, go, version)
+  cmd/                   Subcommand implementations (init, add, rm, go, version)
   git/                   Git command wrappers (RepoRoot, BranchExists, ListWorktrees, etc.)
   config/                Loads .gw/config (TOML)
   hook/                  Hook execution engine for .gw/hooks/

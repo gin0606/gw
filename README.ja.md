@@ -22,11 +22,24 @@ go install github.com/gin0606/gw/cmd/gw@latest
 usage: gw <command> [<args>]
 
 Commands:
+   init      Initialize .gw/ configuration
    add       Create a new worktree
    rm        Remove a worktree
    go        Print worktree path
    version   Print version information
 ```
+
+### `gw init`
+
+`.gw/` ディレクトリをデフォルト設定とフックテンプレートで初期化します。
+
+```sh
+gw init
+```
+
+以下のファイルが作成されます:
+- `.gw/config` — デフォルトの `worktrees_dir` 設定
+- `.gw/hooks/post-add` — コメントアウトされたフックテンプレート
 
 ### `gw add <branch> [--from <ref>]`
 

@@ -22,11 +22,24 @@ go install github.com/gin0606/gw/cmd/gw@latest
 usage: gw <command> [<args>]
 
 Commands:
+   init      Initialize .gw/ configuration
    add       Create a new worktree
    rm        Remove a worktree
    go        Print worktree path
    version   Print version information
 ```
+
+### `gw init`
+
+Initialize `.gw/` directory with default configuration and hook templates.
+
+```sh
+gw init
+```
+
+This creates:
+- `.gw/config` — with default `worktrees_dir` setting
+- `.gw/hooks/post-add` — a commented-out hook template
 
 ### `gw add <branch> [--from <ref>]`
 
