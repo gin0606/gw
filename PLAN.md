@@ -165,16 +165,16 @@ worktree パスを stdout に出力するコマンド。
 
 worktree の削除。フック連携あり。
 
-- [ ] `internal/cmd/remove.go`
-  - [ ] 引数パース: `<identifier>`, `--force`
-  - [ ] 処理フロー:
+- [x] `internal/cmd/remove.go`
+  - [x] 引数パース: `<identifier>`, `--force`
+  - [x] 処理フロー:
     1. identifier → worktree パス解決
     2. `pre-remove` フック実行（worktree ディレクトリで）
        - 失敗 + `--force` なし → エラー終了
        - 失敗 + `--force` あり → 警告して続行
     3. `git worktree remove [--force] <path>` 実行
     4. `post-remove` フック実行（リポジトリルートで）
-- [ ] テスト
+- [x] テスト
 
 **依存:** Phase 2, 4, 6
 

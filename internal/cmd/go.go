@@ -54,7 +54,7 @@ func Go(args []string) int {
 	}
 
 	// 3. Resolve identifier
-	wtPath, err := resolve.Resolve(repoRoot, baseDir, identifier)
+	wtPath, _, err := resolve.Resolve(repoRoot, baseDir, identifier)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "gw: error: %v\n", err)
 		return 1

@@ -27,6 +27,8 @@ func run(args []string) int {
 		return cmd.Add(args[1:])
 	case "go":
 		return cmd.Go(args[1:])
+	case "rm":
+		return cmd.Remove(args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "gw: error: unknown command '%s'\n", args[0])
 		fmt.Fprint(os.Stderr, usage())
@@ -39,6 +41,7 @@ func usage() string {
 
 Commands:
    add       Create a new worktree
+   rm        Remove a worktree
    go        Print worktree path
    version   Print version information
 `

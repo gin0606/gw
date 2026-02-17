@@ -9,15 +9,15 @@ import (
 	"github.com/gin0606/gw/internal/pathutil"
 )
 
-// Resolve resolves an identifier to a worktree absolute path.
+// Resolve resolves an identifier to a worktree absolute path and branch name.
 // Resolution order:
 //  1. Sanitized name path match: find a worktree whose path equals <baseDir>/<sanitize(identifier)>
 //  2. Branch name scan: find a worktree within baseDir whose branch matches identifier
 //  3. Error if no match
-func Resolve(repoRoot, baseDir, identifier string) (string, error) {
+func Resolve(repoRoot, baseDir, identifier string) (path string, branch string, err error) {
 	worktrees, err := git.ListWorktrees(repoRoot)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	// 1. Sanitized name path match
@@ -26,7 +26,7 @@ func Resolve(repoRoot, baseDir, identifier string) (string, error) {
 		target := filepath.Join(baseDir, sanitized)
 		for _, wt := range worktrees {
 			if wt.Path == target {
-				return wt.Path, nil
+				return wt.Path, wt.Branch, nil
 			}
 		}
 	}
@@ -38,9 +38,9 @@ func Resolve(repoRoot, baseDir, identifier string) (string, error) {
 			continue
 		}
 		if wt.Branch != "" && wt.Branch == identifier {
-			return wt.Path, nil
+			return wt.Path, wt.Branch, nil
 		}
 	}
 
-	return "", fmt.Errorf("worktree not found for identifier %q", identifier)
+	return "", "", fmt.Errorf("worktree not found for identifier %q", identifier)
 }
