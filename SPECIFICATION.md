@@ -52,16 +52,16 @@ worktree を削除する。ブランチは削除しない（`git worktree remove
 | 引数/オプション | 必須 | 説明 |
 |---|---|---|
 | `<identifier>` | はい | 削除対象の worktree（[4. identifier 解決](#4-identifier-解決)参照） |
-| `--force` | いいえ | 未コミット変更がある worktree も強制削除。`pre-rm` フック失敗時も続行 |
+| `--force` | いいえ | 未コミット変更がある worktree も強制削除。`pre-remove` フック失敗時も続行 |
 
 #### 処理フロー
 
 1. identifier から worktree パスを解決
-2. `pre-rm` フックを worktree ディレクトリ内で実行
+2. `pre-remove` フックを worktree ディレクトリ内で実行
    - 失敗かつ `--force` なし: エラー終了
    - 失敗かつ `--force` あり: 警告を出力して続行
 3. `git worktree remove [--force] <path>` を実行
-4. `post-rm` フックをリポジトリルートで実行
+4. `post-remove` フックをリポジトリルートで実行
 
 ---
 
@@ -144,8 +144,8 @@ worktree を格納する親ディレクトリ。
 |---|---|---|
 | `pre-add` | worktree 作成前 | リポジトリルート |
 | `post-add` | worktree 作成後 | worktree ディレクトリ |
-| `pre-rm` | worktree 削除前 | worktree ディレクトリ |
-| `post-rm` | worktree 削除後 | リポジトリルート |
+| `pre-remove` | worktree 削除前 | worktree ディレクトリ |
+| `post-remove` | worktree 削除後 | リポジトリルート |
 
 ### 3.2 フック環境変数
 
@@ -170,8 +170,8 @@ worktree を格納する親ディレクトリ。
 |---|---|---|
 | `pre-add` | **作成を中止** | - |
 | `post-add` | 警告のみ（worktree は作成済み） | - |
-| `pre-rm` | **削除を中止** | 警告して削除を続行 |
-| `post-rm` | 警告のみ（worktree は削除済み） | - |
+| `pre-remove` | **削除を中止** | 警告して削除を続行 |
+| `post-remove` | 警告のみ（worktree は削除済み） | - |
 
 ---
 
