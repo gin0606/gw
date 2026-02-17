@@ -31,46 +31,17 @@ func TestResolve_SanitizedNameMatch(t *testing.T) {
 	}
 }
 
-func TestResolve_BranchNameScan(t *testing.T) {
+func TestResolve_BranchNameDoesNotMatch(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 	repoName := filepath.Base(repo.Root)
 
 	// Create worktree with a directory name that doesn't match sanitize("my-branch")
-	wtPath := repo.CreateWorktree(repoName+"-worktrees/custom-dir", "my-branch")
+	repo.CreateWorktree(repoName+"-worktrees/custom-dir", "my-branch")
 
 	bd := baseDir(repo.Root)
-	got, branch, err := resolve.Resolve(repo.Root, bd, "my-branch")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got != wtPath {
-		t.Errorf("got %q, want %q", got, wtPath)
-	}
-	if branch != "my-branch" {
-		t.Errorf("branch = %q, want %q", branch, "my-branch")
-	}
-}
-
-func TestResolve_SanitizedNameMatchPriority(t *testing.T) {
-	repo := testutil.NewTestRepo(t)
-	repoName := filepath.Base(repo.Root)
-	bd := baseDir(repo.Root)
-
-	// Create a worktree whose sanitized name matches the identifier
-	wtPath1 := repo.CreateWorktreeInBaseDir("feature/bar")
-
-	// Create another worktree in base dir whose branch name is "feature/bar" but different dir name
-	// This tests that sanitized name path match takes priority over branch name scan
-	wtPath2 := repo.CreateWorktree(repoName+"-worktrees/other-dir", "feature/bar-alias")
-	_ = wtPath2
-
-	// "feature/bar" should match via sanitized name path match, not branch scan
-	got, _, err := resolve.Resolve(repo.Root, bd, "feature/bar")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got != wtPath1 {
-		t.Errorf("got %q, want %q (sanitized name match should take priority)", got, wtPath1)
+	_, _, err := resolve.Resolve(repo.Root, bd, "my-branch")
+	if err == nil {
+		t.Error("expected error: branch name alone should not resolve when directory name differs")
 	}
 }
 
@@ -100,14 +71,13 @@ func TestResolve_NotFound(t *testing.T) {
 	}
 }
 
-func TestResolve_BranchScanExcludesOutsideBaseDir(t *testing.T) {
+func TestResolve_InvalidIdentifier(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 	bd := baseDir(repo.Root)
 
-	// The main repo has branch "main" but is outside baseDir.
-	// "gw go main" should NOT resolve to the main repo.
-	_, _, err := resolve.Resolve(repo.Root, bd, "main")
+	_, _, err := resolve.Resolve(repo.Root, bd, "/")
 	if err == nil {
-		t.Error("expected error: main repo worktree should not match because it is outside baseDir")
+		t.Error("expected error for identifier that fails sanitization")
 	}
 }
+

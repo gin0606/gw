@@ -99,11 +99,9 @@ worktree を格納する親ディレクトリ。
 
 `gw rm` で使用する identifier から worktree パスを逆引きする。
 
-**解決順序（最初にマッチしたものを返す）:**
+**解決ルール:**
 
-1. **サニタイズ名によるパスマッチ**: パスが `<base_dir>/<sanitize(identifier)>` と一致する worktree を探す
-2. **ブランチ名によるスキャン**: ベースディレクトリ内の worktree に絞り込み、ブランチ名が identifier と一致するかチェック
-3. **すべて失敗**: エラー
+パスが `<base_dir>/<sanitize(identifier)>` と一致する worktree を探す。見つからない場合はエラー。
 
 ---
 
