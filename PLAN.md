@@ -62,7 +62,7 @@ internal/
   - [x] `BranchExists(repoRoot, branch string) (bool, error)`: ローカルブランチ存在確認
   - [x] `RemoteRefExists(repoRoot, ref string) (bool, error)`: リモートブランチ存在確認（`origin/<branch>`）。`gw add` で `--from` 省略時のデフォルト ref 判定に使用
   - [x] `RepoName(repoRoot string) string`: リポジトリ名取得（ベースディレクトリ名）
-  - [ ] `ListWorktrees(repoRoot string) ([]Worktree, error)`: `git worktree list --porcelain` をパースし、worktree 一覧を返す。identifier 解決（Phase 6）で使用
+  - [x] `ListWorktrees(repoRoot string) ([]Worktree, error)`: `git worktree list --porcelain` をパースし、worktree 一覧を返す。identifier 解決（Phase 6）で使用
 - [x] テスト（git 統合テスト）
 
 **依存:** なし
@@ -134,12 +134,12 @@ add / rm で利用するフック実行基盤。
 
 `gw go` / `gw rm` が依存する逆引き機構。
 
-- [ ] `internal/resolve/resolve.go`
-  - [ ] `git.ListWorktrees()` を唯一のデータソースとして使用
-  - [ ] サニタイズ名パスマッチ: worktree 一覧から、パスが `<base_dir>/<sanitize(identifier)>` と一致するものを探す
-  - [ ] ブランチ名スキャン: worktree 一覧からベースディレクトリ内に絞り込み、ブランチ名が identifier と一致するものを探す
-  - [ ] すべて失敗 → エラー
-- [ ] テスト
+- [x] `internal/resolve/resolve.go`
+  - [x] `git.ListWorktrees()` を唯一のデータソースとして使用
+  - [x] サニタイズ名パスマッチ: worktree 一覧から、パスが `<base_dir>/<sanitize(identifier)>` と一致するものを探す
+  - [x] ブランチ名スキャン: worktree 一覧からベースディレクトリ内に絞り込み、ブランチ名が identifier と一致するものを探す
+  - [x] すべて失敗 → エラー
+- [x] テスト
 
 **依存:** Phase 2（`git.ListWorktrees`）, Phase 3（パス計算・サニタイズ）
 
@@ -149,13 +149,13 @@ add / rm で利用するフック実行基盤。
 
 worktree パスを stdout に出力するコマンド。
 
-- [ ] `internal/cmd/go.go`
-  - [ ] 処理フロー:
+- [x] `internal/cmd/go.go`
+  - [x] 処理フロー:
     1. リポジトリルート検出
     2. 設定読み込み・ベースディレクトリ解決
     3. identifier 解決（`git worktree list` ベース）
     4. 絶対パスを stdout に出力
-- [ ] テスト
+- [x] テスト
 
 **依存:** Phase 2, 3, 6
 

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/gin0606/gw/internal/pathutil"
 )
 
 // TestRepo represents a temporary git repository for testing.
@@ -115,6 +117,22 @@ func (r *TestRepo) WriteHookNoExec(name, content string) {
 	if err := os.WriteFile(filepath.Join(hookDir, name), []byte(content), 0644); err != nil {
 		r.t.Fatal(err)
 	}
+}
+
+// CreateWorktreeInBaseDir creates a worktree in the default base directory (<repo-name>-worktrees/<sanitized-branch>).
+func (r *TestRepo) CreateWorktreeInBaseDir(branch string) string {
+	r.t.Helper()
+	repoName := filepath.Base(r.Root)
+	baseDir := filepath.Join(filepath.Dir(r.Root), repoName+"-worktrees")
+	if err := os.MkdirAll(baseDir, 0755); err != nil {
+		r.t.Fatal(err)
+	}
+	wtPath, err := pathutil.ComputePath(baseDir, branch)
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	gitCmd(r.t, r.Root, "worktree", "add", wtPath, "-b", branch)
+	return wtPath
 }
 
 func gitCmd(t *testing.T, dir string, args ...string) string {

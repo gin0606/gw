@@ -110,3 +110,47 @@ func TestRemoteRefExists_NotExists(t *testing.T) {
 		t.Error("expected remote ref not to exist")
 	}
 }
+
+func TestListWorktrees_MainOnly(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	worktrees, err := git.ListWorktrees(repo.Root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(worktrees) != 1 {
+		t.Fatalf("got %d worktrees, want 1", len(worktrees))
+	}
+	if worktrees[0].Path != repo.Root {
+		t.Errorf("got path %q, want %q", worktrees[0].Path, repo.Root)
+	}
+	if worktrees[0].Branch != "main" {
+		t.Errorf("got branch %q, want %q", worktrees[0].Branch, "main")
+	}
+}
+
+func TestListWorktrees_WithWorktrees(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	wtPath := repo.CreateWorktreeInBaseDir("feature/test")
+
+	worktrees, err := git.ListWorktrees(repo.Root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(worktrees) != 2 {
+		t.Fatalf("got %d worktrees, want 2", len(worktrees))
+	}
+
+	var found bool
+	for _, wt := range worktrees {
+		if wt.Path == wtPath && wt.Branch == "feature/test" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("worktree with path %q and branch %q not found in %v", wtPath, "feature/test", worktrees)
+	}
+}

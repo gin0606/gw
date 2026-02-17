@@ -87,3 +87,41 @@ func RemoteRefExists(repoRoot, ref string) (bool, error) {
 func RepoName(repoRoot string) string {
 	return filepath.Base(repoRoot)
 }
+
+// Worktree represents a git worktree entry.
+// Branch is empty for detached HEAD worktrees.
+type Worktree struct {
+	Path   string
+	Branch string
+}
+
+// ListWorktrees parses `git worktree list --porcelain` and returns all worktrees.
+func ListWorktrees(repoRoot string) ([]Worktree, error) {
+	cmd := exec.Command("git", "worktree", "list", "--porcelain")
+	cmd.Dir = repoRoot
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list worktrees: %w", err)
+	}
+
+	var worktrees []Worktree
+	var current Worktree
+
+	for _, line := range strings.Split(string(out), "\n") {
+		switch {
+		case strings.HasPrefix(line, "worktree "):
+			if current.Path != "" {
+				worktrees = append(worktrees, current)
+			}
+			current = Worktree{Path: strings.TrimPrefix(line, "worktree ")}
+		case strings.HasPrefix(line, "branch refs/heads/"):
+			current.Branch = strings.TrimPrefix(line, "branch refs/heads/")
+		}
+	}
+
+	if current.Path != "" {
+		worktrees = append(worktrees, current)
+	}
+
+	return worktrees, nil
+}

@@ -332,3 +332,107 @@ func TestAdd_ExistingBranch_WithFrom_PreAddNotExecuted(t *testing.T) {
 		t.Error("pre-add hook should not have been executed")
 	}
 }
+
+// --- Phase 7: gw go ---
+
+func TestGo_Resolved(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	// Create a worktree via gw add
+	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/go-test")
+	if exitCode != 0 {
+		t.Fatalf("gw add exit code = %d, want 0", exitCode)
+	}
+	addPath := strings.TrimSpace(addStdout)
+
+	// Resolve via gw go
+	stdout, _, exitCode := runGw(t, repo.Root, "go", "feature/go-test")
+
+	if exitCode != 0 {
+		t.Errorf("exit code = %d, want 0", exitCode)
+	}
+
+	goPath := strings.TrimSpace(stdout)
+	if goPath != addPath {
+		t.Errorf("got %q, want %q", goPath, addPath)
+	}
+}
+
+func TestGo_NotFound(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	_, stderr, exitCode := runGw(t, repo.Root, "go", "nonexistent")
+
+	if exitCode != 1 {
+		t.Errorf("exit code = %d, want 1", exitCode)
+	}
+	if !strings.Contains(stderr, "gw: error:") {
+		t.Errorf("expected 'gw: error:' format in stderr, got: %q", stderr)
+	}
+}
+
+func TestGo_NoArgs(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	_, stderr, exitCode := runGw(t, repo.Root, "go")
+
+	if exitCode != 1 {
+		t.Errorf("exit code = %d, want 1", exitCode)
+	}
+	if !strings.Contains(stderr, "gw: error:") {
+		t.Errorf("expected 'gw: error:' format in stderr, got: %q", stderr)
+	}
+}
+
+func TestGo_OutsideGitRepo(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	_, _, exitCode := runGw(t, tmpDir, "go", "feature/test")
+
+	if exitCode != 1 {
+		t.Errorf("exit code = %d, want 1", exitCode)
+	}
+}
+
+func TestGo_ExtraArgs(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	_, stderr, exitCode := runGw(t, repo.Root, "go", "feature/foo", "extra")
+
+	if exitCode != 1 {
+		t.Errorf("exit code = %d, want 1", exitCode)
+	}
+	if !strings.Contains(stderr, "gw: error:") {
+		t.Errorf("expected 'gw: error:' format in stderr, got: %q", stderr)
+	}
+}
+
+func TestGo_FromWorktree(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	// Create a worktree via gw add
+	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/wt-source")
+	if exitCode != 0 {
+		t.Fatalf("gw add exit code = %d, want 0", exitCode)
+	}
+	sourcePath := strings.TrimSpace(addStdout)
+
+	// Create another worktree to resolve
+	addStdout2, _, exitCode := runGw(t, repo.Root, "add", "feature/wt-target")
+	if exitCode != 0 {
+		t.Fatalf("gw add exit code = %d, want 0", exitCode)
+	}
+	targetPath := strings.TrimSpace(addStdout2)
+
+	// Run gw go from inside the first worktree
+	stdout, _, exitCode := runGw(t, sourcePath, "go", "feature/wt-target")
+
+	if exitCode != 0 {
+		t.Errorf("exit code = %d, want 0", exitCode)
+	}
+
+	goPath := strings.TrimSpace(stdout)
+	if goPath != targetPath {
+		t.Errorf("got %q, want %q", goPath, targetPath)
+	}
+}
