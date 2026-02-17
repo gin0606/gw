@@ -1,0 +1,112 @@
+package git_test
+
+import (
+	"testing"
+
+	"github.com/gin0606/gw/internal/git"
+	"github.com/gin0606/gw/internal/testutil"
+)
+
+func TestRepoRoot_MainRepo(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	root, err := git.RepoRoot(repo.Root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if root != repo.Root {
+		t.Errorf("got %q, want %q", root, repo.Root)
+	}
+}
+
+func TestRepoRoot_Worktree(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	wtPath := repo.CreateWorktree("test-wt", "test-branch")
+
+	root, err := git.RepoRoot(wtPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if root != repo.Root {
+		t.Errorf("got %q, want %q", root, repo.Root)
+	}
+}
+
+func TestRepoRoot_OutsideGitRepo(t *testing.T) {
+	tmpDir := t.TempDir()
+	_, err := git.RepoRoot(tmpDir)
+	if err == nil {
+		t.Error("expected error for non-git directory")
+	}
+}
+
+func TestDefaultBranch_Set(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	branch, err := git.DefaultBranch(repo.Root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if branch != "main" {
+		t.Errorf("got %q, want %q", branch, "main")
+	}
+}
+
+func TestDefaultBranch_NotSet(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	repo.DeleteOriginHead()
+
+	_, err := git.DefaultBranch(repo.Root)
+	if err == nil {
+		t.Error("expected error when origin/HEAD is not set")
+	}
+}
+
+func TestBranchExists_Exists(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	repo.CreateBranch("feature-test")
+
+	exists, err := git.BranchExists(repo.Root, "feature-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !exists {
+		t.Error("expected branch to exist")
+	}
+}
+
+func TestBranchExists_NotExists(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	exists, err := git.BranchExists(repo.Root, "nonexistent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exists {
+		t.Error("expected branch not to exist")
+	}
+}
+
+func TestRemoteRefExists_Exists(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	exists, err := git.RemoteRefExists(repo.Root, "origin/main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !exists {
+		t.Error("expected remote ref to exist")
+	}
+}
+
+func TestRemoteRefExists_NotExists(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	exists, err := git.RemoteRefExists(repo.Root, "origin/nonexistent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exists {
+		t.Error("expected remote ref not to exist")
+	}
+}

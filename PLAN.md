@@ -35,13 +35,13 @@ internal/
 
 最小の動くバイナリを作る。
 
-- [ ] `cmd/gw/main.go`
-  - [ ] 引数パース・コマンドルーティング
-  - [ ] usage 出力（引数なし・不正コマンド → stderr、終了コード 1）
-- [ ] `internal/cmd/version.go`
-  - [ ] `gw version <VERSION>` を stdout に出力
+- [x] `cmd/gw/main.go`
+  - [x] 引数パース・コマンドルーティング
+  - [x] usage 出力（引数なし・不正コマンド → stderr、終了コード 1）
+- [x] `internal/cmd/version.go`
+  - [x] `gw version <VERSION>` を stdout に出力
   - バージョン文字列は `var version = "0.1.0"` としてソースに保持し、リリース時に `-ldflags '-X main.version=...'` で上書き
-- [ ] テスト
+- [x] テスト
 
 **依存:** なし
 
@@ -51,19 +51,19 @@ internal/
 
 以降のすべてのコマンドが依存する git 操作の基盤。テストヘルパーもここで構築する。
 
-- [ ] `internal/testutil/repo.go`: テストヘルパー（詳細はテスト戦略セクション参照）
-- [ ] `internal/git/git.go`
-  - [ ] `RepoRoot(dir string) (string, error)`: リポジトリルート検出
+- [x] `internal/testutil/repo.go`: テストヘルパー（詳細はテスト戦略セクション参照）
+- [x] `internal/git/git.go`
+  - [x] `RepoRoot(dir string) (string, error)`: リポジトリルート検出
     - `dir` を cwd として `git rev-parse --git-common-dir` を実行
     - 結果が相対パスの場合（メインリポジトリでは `.git` が返る）、`dir` 基準で絶対パスに変換
     - `filepath.Dir()` でリポジトリルートを導出
     - worktree 内から実行された場合でもメインリポジトリのルートを返す
-  - [ ] `DefaultBranch(repoRoot string) (string, error)`: デフォルトブランチ取得（`origin/HEAD` → 未設定ならエラー）
-  - [ ] `BranchExists(repoRoot, branch string) (bool, error)`: ローカルブランチ存在確認
-  - [ ] `RemoteRefExists(repoRoot, ref string) (bool, error)`: リモートブランチ存在確認（`origin/<branch>`）。`gw add` で `--from` 省略時のデフォルト ref 判定に使用
-  - [ ] `RepoName(repoRoot string) string`: リポジトリ名取得（ベースディレクトリ名）
+  - [x] `DefaultBranch(repoRoot string) (string, error)`: デフォルトブランチ取得（`origin/HEAD` → 未設定ならエラー）
+  - [x] `BranchExists(repoRoot, branch string) (bool, error)`: ローカルブランチ存在確認
+  - [x] `RemoteRefExists(repoRoot, ref string) (bool, error)`: リモートブランチ存在確認（`origin/<branch>`）。`gw add` で `--from` 省略時のデフォルト ref 判定に使用
+  - [x] `RepoName(repoRoot string) string`: リポジトリ名取得（ベースディレクトリ名）
   - [ ] `ListWorktrees(repoRoot string) ([]Worktree, error)`: `git worktree list --porcelain` をパースし、worktree 一覧を返す。identifier 解決（Phase 6）で使用
-- [ ] テスト（git 統合テスト）
+- [x] テスト（git 統合テスト）
 
 **依存:** なし
 
@@ -73,18 +73,18 @@ internal/
 
 worktree パスの計算に必要な設定読み込みとサニタイズ。
 
-- [ ] `internal/config/config.go`
-  - [ ] `.gw/config` (TOML) のパース
-  - [ ] `worktrees_dir` の読み込み（デフォルト: `../<repo-name>-worktrees/`）
+- [x] `internal/config/config.go`
+  - [x] `.gw/config` (TOML) のパース
+  - [x] `worktrees_dir` の読み込み（デフォルト: `../<repo-name>-worktrees/`）
   - ファイルが存在しない場合はデフォルト値を使用
   - 未知のキーは無視する（前方互換性のため）
-- [ ] `internal/pathutil/pathutil.go`
-  - [ ] ベースディレクトリ解決（設定 or デフォルト）。存在しない場合は自動的に作成する (§2.1)
-  - [ ] ブランチ名サニタイズ（`/` → `-`、先頭末尾 `-` 除去）
-  - [ ] バリデーション（空文字列、`.`、`..` はエラー）
-  - [ ] `ComputePath(baseDir, branch) string`: 最終パス計算（`<base_dir>/<sanitized-branch>`）
-  - [ ] `ValidatePath(path) error`: 衝突チェック（ディレクトリ既存ならエラー）
-- [ ] テスト
+- [x] `internal/pathutil/pathutil.go`
+  - [x] ベースディレクトリ解決（設定 or デフォルト）。存在しない場合は自動的に作成する (§2.1)
+  - [x] ブランチ名サニタイズ（`/` → `-`、先頭末尾 `-` 除去）
+  - [x] バリデーション（空文字列、`.`、`..` はエラー）
+  - [x] `ComputePath(baseDir, branch) string`: 最終パス計算（`<base_dir>/<sanitized-branch>`）
+  - [x] `ValidatePath(path) error`: 衝突チェック（ディレクトリ既存ならエラー）
+- [x] テスト
 
 **依存:** Phase 2（リポジトリルート・リポジトリ名が必要）
 
@@ -94,15 +94,15 @@ worktree パスの計算に必要な設定読み込みとサニタイズ。
 
 add / rm で利用するフック実行基盤。
 
-- [ ] `internal/hook/hook.go`
-  - [ ] フック実行（`.gw/hooks/<hook-name>`）
-  - [ ] フック不在 → 成功扱い
-  - [ ] 実行権限チェック（なければエラー）
-  - [ ] 環境変数エクスポート: `GW_REPO_ROOT`, `GW_WORKTREE_PATH`, `GW_BRANCH`
+- [x] `internal/hook/hook.go`
+  - [x] フック実行（`.gw/hooks/<hook-name>`）
+  - [x] フック不在 → 成功扱い
+  - [x] 実行権限チェック（なければエラー）
+  - [x] 環境変数エクスポート: `GW_REPO_ROOT`, `GW_WORKTREE_PATH`, `GW_BRANCH`
     - `pre-add` フックでは `GW_WORKTREE_PATH` は作成予定のパス（まだ存在しない）
-  - [ ] 実行場所（cwd）の制御
-  - [ ] stdout/stderr を親プロセスの stderr に流す
-- [ ] テスト
+  - [x] 実行場所（cwd）の制御
+  - [x] stdout/stderr を親プロセスの stderr に流す
+- [x] テスト
 
 **依存:** なし（インターフェースは Phase 2 のリポジトリルート等を受け取る）
 
@@ -112,9 +112,9 @@ add / rm で利用するフック実行基盤。
 
 コア機能。worktree の作成。
 
-- [ ] `internal/cmd/add.go`
-  - [ ] 引数パース: `<branch>`, `--from <ref>`
-  - [ ] 処理フロー:
+- [x] `internal/cmd/add.go`
+  - [x] 引数パース: `<branch>`, `--from <ref>`
+  - [x] 処理フロー:
     1. リポジトリルート検出
     2. worktree パス計算・衝突チェック（`ValidatePath` でディレクトリ既存ならエラー）
     3. ローカルブランチ存在確認・引数検証（既存ブランチ + `--from` → エラー）・起点 ref 解決（新規ブランチ + `--from` 省略時: `RemoteRefExists` で `origin/<デフォルトブランチ>` の存在を確認し、存在すればそれを使用、なければ `<デフォルトブランチ>` にフォールバック）
@@ -124,7 +124,7 @@ add / rm で利用するフック実行基盤。
        - 既存: `git worktree add <path> <branch>`
     6. `post-add` フック実行（worktree ディレクトリで）
     7. 作成先パスを stdout に出力
-- [ ] テスト
+- [x] テスト
 
 **依存:** Phase 2, 3, 4
 
@@ -194,7 +194,7 @@ worktree の削除。フック連携あり。
 
 git 統合テスト・E2E テストで共通利用する一時 git 環境のセットアップ。Phase 2 で構築する。
 
-- [ ] `internal/testutil/repo.go`
+- [x] `internal/testutil/repo.go`
   - `t.TempDir()` 内に git リポジトリを作成（`git init` + 初回コミット）
   - bare リポジトリを origin として設定（remote ブランチのテスト用）
   - ブランチ作成ヘルパー
@@ -329,16 +329,16 @@ git 統合テスト・E2E テストで共通利用する一時 git 環境のセ�
 
 | フェーズ | 内容 | 状態 |
 |---------|------|------|
-| Phase 1 | CLI スケルトン / `gw version` | 未着手 |
-| Phase 2 | git 操作ユーティリティ | 未着手 |
-| Phase 3 | 設定ファイル / パス計算 | 未着手 |
-| Phase 4 | フックシステム | 未着手 |
-| Phase 5 | `gw add` | 未着手 |
+| Phase 1 | CLI スケルトン / `gw version` | 完了 |
+| Phase 2 | git 操作ユーティリティ | 完了（`ListWorktrees` は Phase 6 で実装予定） |
+| Phase 3 | 設定ファイル / パス計算 | 完了 |
+| Phase 4 | フックシステム | 完了 |
+| Phase 5 | `gw add` | 完了 |
 | Phase 6 | identifier 解決 | 未着手 |
 | Phase 7 | `gw go` | 未着手 |
 | Phase 8 | `gw rm` | 未着手 |
 
-**次のアクション:** Phase 1 から開始
+**次のアクション:** Phase 6 から開始
 
 ---
 
