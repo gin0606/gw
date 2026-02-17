@@ -325,23 +325,6 @@ git 統合テスト・E2E テストで共通利用する一時 git 環境のセ�
 
 ---
 
-## 実装状況
-
-| フェーズ | 内容 | 状態 |
-|---------|------|------|
-| Phase 1 | CLI スケルトン / `gw version` | 完了 |
-| Phase 2 | git 操作ユーティリティ | 完了（`ListWorktrees` は Phase 6 で実装予定） |
-| Phase 3 | 設定ファイル / パス計算 | 完了 |
-| Phase 4 | フックシステム | 完了 |
-| Phase 5 | `gw add` | 完了 |
-| Phase 6 | identifier 解決 | 未着手 |
-| Phase 7 | `gw go` | 未着手 |
-| Phase 8 | `gw rm` | 未着手 |
-
-**次のアクション:** Phase 6 から開始
-
----
-
 ## 外部依存
 
 | ライブラリ | 用途 |
