@@ -14,7 +14,59 @@
 
 ## 1. コマンド
 
-### 1.1 `gw add <branch> [--from <ref>]`
+**共通ルール:** 各コマンドは定義されていない引数・オプションが渡された場合はエラーとする。
+
+### 1.1 `gw init`
+
+`.gw/` ディレクトリと初期ファイルを作成する。
+
+#### 引数・オプション
+
+なし。
+
+#### 処理フロー
+
+1. リポジトリルートを検出（worktree 内からも可）
+2. `<repoRoot>/.gw/` が既に存在する場合はエラー
+3. 以下のディレクトリ・ファイルを作成:
+   - `.gw/config`
+   - `.gw/hooks/post-add`（実行権限付き `0755`、全行コメント）
+
+#### 生成ファイル
+
+**`.gw/config`:**（リポジトリ名が `myproject` の場合）
+
+```toml
+# See https://github.com/gin0606/gw
+worktrees_dir = "../myproject-worktrees"
+```
+
+`worktrees_dir` にはデフォルト値（`../<repo-name>-worktrees`）を展開して記述する。
+
+**`.gw/hooks/post-add`:**
+
+```sh
+#!/bin/sh
+# This hook is called after a worktree is created.
+# See https://github.com/gin0606/gw for other available hooks.
+#
+# Available environment variables:
+#   GW_REPO_ROOT       - Main repository root
+#   GW_WORKTREE_PATH   - Worktree path
+#   GW_BRANCH          - Branch name
+#
+# Example: Install dependencies
+# npm install
+```
+
+#### 出力
+
+- **stdout**: なし
+- **stderr**: `Initialized .gw/ in <repoRoot>`
+
+---
+
+### 1.2 `gw add <branch> [--from <ref>]`
 
 worktree を作成し、作成先パスを stdout に出力する。
 
@@ -46,7 +98,7 @@ worktree を作成し、作成先パスを stdout に出力する。
 
 ---
 
-### 1.2 `gw rm <identifier> [--force]`
+### 1.3 `gw rm <identifier> [--force]`
 
 worktree を削除する。ブランチは削除しない（`git worktree remove` 準拠）。
 
@@ -73,7 +125,7 @@ worktree を削除する。ブランチは削除しない（`git worktree remove
 
 ---
 
-### 1.3 `gw go <identifier>`
+### 1.4 `gw go <identifier>`
 
 worktree のパスを stdout に出力する。`cd "$(gw go <id>)"` のようにシェル連携で使用する。
 
@@ -90,7 +142,7 @@ worktree のパスを stdout に出力する。`cd "$(gw go <id>)"` のように
 
 ---
 
-### 1.4 `gw version`
+### 1.5 `gw version`
 
 バージョン情報を stdout に出力する（`git --version` 準拠）。
 
@@ -98,7 +150,7 @@ worktree のパスを stdout に出力する。`cd "$(gw go <id>)"` のように
 gw version <VERSION>
 ```
 
-### 1.5 引数なし・不正コマンド
+### 1.6 引数なし・不正コマンド
 
 引数なしまたは不正なコマンドの場合、usage を stderr に出力し終了コード 1 で終了する（git 準拠）。
 
@@ -252,6 +304,7 @@ git コマンド由来のエラーは `gw: error:` でラップせず、git の�
 | 状況 | 終了コード |
 |---|---|
 | git リポジトリ外での実行 | 1 |
+| `.gw/` が既に存在する（`gw init` 時） | 1 |
 | 不明なコマンド | 1 |
 | worktree が見つからない（identifier 解決失敗） | 1 |
 | worktree が既に存在する（サニタイズ衝突を含む） | 1 |
