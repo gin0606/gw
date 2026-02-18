@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`gw` is a thin wrapper CLI around git worktree with automatic path calculation and a hook system. Go 1.25+, sole external dependency is `github.com/BurntSushi/toml`.
+`gw` is a git worktree wrapper with lifecycle hooks. It runs user scripts before and after worktree creation/removal, and automatically calculates worktree paths from branch names. Go 1.25+, sole external dependency is `github.com/BurntSushi/toml`.
 
 Design philosophy: features achievable through hooks are not built into the tool itself.
 
