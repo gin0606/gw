@@ -16,60 +16,26 @@ A thin wrapper around `git worktree` with automatic path calculation and hook su
 go install github.com/gin0606/gw/cmd/gw@latest
 ```
 
-## Usage
+## Commands
 
-```
-usage: gw <command> [<args>]
+- **`gw init`** — Initialize `.gw/` directory with default configuration and hook templates.
+- **`gw add <branch> [--from <ref>]`** — Create a new worktree. The path is calculated from the branch name and printed to stdout. When `--from` is omitted and the branch does not exist, it is created from `origin/<default branch>`.
+- **`gw rm <path> [--force]`** — Remove a worktree by its path (absolute or relative). Use `--force` to remove even with uncommitted changes.
+- **`gw list`** — Print the absolute path of each worktree, one per line.
 
-Commands:
-   init      Initialize .gw/ configuration
-   add       Create a new worktree
-   rm        Remove a worktree
-   list      List all worktrees
-```
+## Recipes
 
-### `gw init`
-
-Initialize `.gw/` directory with default configuration and hook templates.
+Commands are designed to compose with standard shell tools.
 
 ```sh
-gw init
-```
-
-This creates:
-- `.gw/config` — with default `worktrees_dir` setting
-- `.gw/hooks/post-add` — a commented-out hook template
-
-### `gw add <branch> [--from <ref>]`
-
-Create a new worktree. The worktree path is automatically calculated from the branch name and printed to stdout.
-
-```sh
-# Create a worktree for an existing branch
-gw add feature/user-auth
-
-# Create a worktree with a new branch from a specific ref
-gw add feature/new-feature --from origin/main
-
-# Create and cd into the worktree
+# Create a worktree and cd into it
 cd "$(gw add feature/user-auth)"
-```
 
-When `--from` is omitted and the branch does not exist, it is created from `origin/<default branch>` (falls back to `<default branch>` if the remote ref does not exist).
+# Interactively select a worktree with fzf
+cd "$(gw list | fzf)"
 
-### `gw rm <path> [--force]`
-
-Remove a worktree by its path. Accepts the absolute or relative path to the worktree directory (e.g. the output of `gw list`).
-
-```sh
-# Remove a worktree
-gw rm /path/to/repo-worktrees/feature-user-auth
-
-# Combine with gw list
-gw rm "$(gw list | grep feature-user-auth)"
-
-# Force remove (even with uncommitted changes)
-gw rm /path/to/repo-worktrees/feature-user-auth --force
+# Remove a worktree selected with fzf
+gw rm "$(gw list | fzf)"
 ```
 
 ## Configuration
@@ -81,8 +47,8 @@ Place a TOML configuration file at `.gw/config` in your repository root.
 worktrees_dir = "../my-worktrees"
 ```
 
-| Key | Description | Default |
-|---|---|---|
+| Key             | Description                  | Default                    |
+| --------------- | ---------------------------- | -------------------------- |
 | `worktrees_dir` | Base directory for worktrees | Adjacent to the repository |
 
 ## Hooks
@@ -91,22 +57,22 @@ Place executable files in `.gw/hooks/` in your repository root.
 
 ### Available hooks
 
-| Hook | Trigger | Working directory |
-|---|---|---|
-| `pre-add` | Before worktree creation | Repository root |
-| `post-add` | After worktree creation | Worktree directory |
-| `pre-remove` | Before worktree removal | Worktree directory |
-| `post-remove` | After worktree removal | Repository root |
+| Hook          | Trigger                  | Working directory  |
+| ------------- | ------------------------ | ------------------ |
+| `pre-add`     | Before worktree creation | Repository root    |
+| `post-add`    | After worktree creation  | Worktree directory |
+| `pre-remove`  | Before worktree removal  | Worktree directory |
+| `post-remove` | After worktree removal   | Repository root    |
 
 ### Environment variables
 
 The following environment variables are available in hooks:
 
-| Variable | Description |
-|---|---|
-| `GW_REPO_ROOT` | Absolute path to the main repository root |
-| `GW_WORKTREE_PATH` | Absolute path to the worktree |
-| `GW_BRANCH` | Branch name |
+| Variable           | Description                               |
+| ------------------ | ----------------------------------------- |
+| `GW_REPO_ROOT`     | Absolute path to the main repository root |
+| `GW_WORKTREE_PATH` | Absolute path to the worktree             |
+| `GW_BRANCH`        | Branch name                               |
 
 ### Example: auto-install dependencies after creating a worktree
 
