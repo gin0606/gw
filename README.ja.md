@@ -58,16 +58,19 @@ cd "$(gw add feature/user-auth)"
 
 `--from` を省略してブランチが存在しない場合、`origin/<デフォルトブランチ>` から作成されます（リモート ref が存在しない場合は `<デフォルトブランチ>` にフォールバック）。
 
-### `gw rm <identifier> [--force]`
+### `gw rm <path> [--force]`
 
-worktree を削除します。identifier にはブランチ名またはサニタイズ済みディレクトリ名を指定できます。
+worktree をパス指定で削除します。絶対パスまたは相対パスを受け付けます（`gw list` の出力をそのまま使えます）。
 
 ```sh
 # worktree を削除
-gw rm feature/user-auth
+gw rm /path/to/repo-worktrees/feature-user-auth
+
+# gw list と組み合わせる
+gw rm "$(gw list | grep feature-user-auth)"
 
 # 強制削除（未コミット変更があっても削除）
-gw rm feature/user-auth --force
+gw rm /path/to/repo-worktrees/feature-user-auth --force
 ```
 
 ### `gw go <identifier>`

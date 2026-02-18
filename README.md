@@ -57,16 +57,19 @@ cd "$(gw add feature/user-auth)"
 
 When `--from` is omitted and the branch does not exist, it is created from `origin/<default branch>` (falls back to `<default branch>` if the remote ref does not exist).
 
-### `gw rm <identifier> [--force]`
+### `gw rm <path> [--force]`
 
-Remove a worktree. The identifier can be a branch name or a sanitized directory name.
+Remove a worktree by its path. Accepts the absolute or relative path to the worktree directory (e.g. the output of `gw list`).
 
 ```sh
 # Remove a worktree
-gw rm feature/user-auth
+gw rm /path/to/repo-worktrees/feature-user-auth
+
+# Combine with gw list
+gw rm "$(gw list | grep feature-user-auth)"
 
 # Force remove (even with uncommitted changes)
-gw rm feature/user-auth --force
+gw rm /path/to/repo-worktrees/feature-user-auth --force
 ```
 
 ## Configuration

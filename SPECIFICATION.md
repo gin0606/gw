@@ -16,7 +16,7 @@
 
 - `gw init` — `.gw/` ディレクトリと初期ファイルを作成する。
 - `gw add <branch>` — worktree を作成し、作成先パスを stdout に出力する。
-- `gw rm <identifier>` — worktree を削除する。ブランチは削除しない（`git worktree remove` 準拠）。
+- `gw rm <path>` — worktree をパス指定で削除する。ブランチは削除しない（`git worktree remove` 準拠）。
 - `gw list` — worktree の一覧を出力する。
 
 引数なしまたは不正なコマンドの場合、usage を stderr に出力し終了コード 1 で終了する（git 準拠）。
@@ -95,17 +95,7 @@ worktree を格納する親ディレクトリ。
 
 ---
 
-## 4. identifier 解決
-
-`gw rm` で使用する identifier から worktree パスを逆引きする。
-
-**解決ルール:**
-
-パスが `<base_dir>/<sanitize(identifier)>` と一致する worktree を探す。見つからない場合はエラー。
-
----
-
-## 5. 設定ファイル
+## 4. 設定ファイル
 
 メインリポジトリルートの `.gw/config` に設定を記述する。ファイルが存在しない場合はすべてデフォルト値を使用する。
 
@@ -119,13 +109,13 @@ worktree を格納する親ディレクトリ。
 
 ---
 
-## 6. エラー処理
+## 5. エラー処理
 
 エラー処理や usage 表示は urfave/cli に委譲し、gw コマンド自体の責務を最小化する。
 
 ---
 
-## 7. 将来の拡張
+## 6. 将来の拡張
 
 - git worktree サブコマンドのパススルー
 - シェル補完
