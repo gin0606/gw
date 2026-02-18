@@ -111,6 +111,79 @@ func TestRemoteRefExists_NotExists(t *testing.T) {
 	}
 }
 
+func TestListLocalBranches(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	repo.CreateBranch("feature-a")
+	repo.CreateBranch("feature-b")
+
+	branches, err := git.ListLocalBranches(repo.Root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := map[string]bool{"main": false, "feature-a": false, "feature-b": false}
+	for _, b := range branches {
+		if _, ok := want[b]; ok {
+			want[b] = true
+		}
+	}
+	for name, found := range want {
+		if !found {
+			t.Errorf("expected branch %q in list, got %v", name, branches)
+		}
+	}
+}
+
+func TestListLocalBranches_MainOnly(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	branches, err := git.ListLocalBranches(repo.Root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Should at least contain "main"
+	found := false
+	for _, b := range branches {
+		if b == "main" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected 'main' in branches, got %v", branches)
+	}
+}
+
+func TestListRefs(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	repo.CreateBranch("feature-x")
+	repo.PushBranch("feature-x")
+	repo.CreateTag("v1.0.0")
+
+	refs, err := git.ListRefs(repo.Root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := map[string]bool{
+		"main":             false,
+		"feature-x":        false,
+		"origin/main":      false,
+		"origin/feature-x": false,
+		"v1.0.0":           false,
+	}
+	for _, r := range refs {
+		if _, ok := want[r]; ok {
+			want[r] = true
+		}
+	}
+	for name, found := range want {
+		if !found {
+			t.Errorf("expected ref %q in list, got %v", name, refs)
+		}
+	}
+}
+
 func TestListWorktrees_MainOnly(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 

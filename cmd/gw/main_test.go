@@ -987,3 +987,131 @@ func TestRm_ForceOnly_NoPath(t *testing.T) {
 		t.Errorf("expected 'path required' in stderr, got: %q", stderr)
 	}
 }
+
+// --- shell completion ---
+
+func TestCompletion_Add_Branches(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	repo.CreateBranch("feature-complete")
+
+	stdout, _, exitCode := runGw(t, repo.Root, "add", "--generate-shell-completion")
+
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0", exitCode)
+	}
+	if !strings.Contains(stdout, "feature-complete") {
+		t.Errorf("expected 'feature-complete' in completion output, got: %q", stdout)
+	}
+	if !strings.Contains(stdout, "main") {
+		t.Errorf("expected 'main' in completion output, got: %q", stdout)
+	}
+}
+
+func TestCompletion_Add_FromRefs(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	repo.CreateBranch("feature-ref")
+	repo.PushBranch("feature-ref")
+
+	stdout, _, exitCode := runGw(t, repo.Root, "add", "--from", "--generate-shell-completion")
+
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0", exitCode)
+	}
+	if !strings.Contains(stdout, "origin/main") {
+		t.Errorf("expected 'origin/main' in completion output, got: %q", stdout)
+	}
+	if !strings.Contains(stdout, "feature-ref") {
+		t.Errorf("expected 'feature-ref' in completion output, got: %q", stdout)
+	}
+}
+
+func TestCompletion_Add_NoCompletionAfterBranch(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	repo.CreateBranch("feature-done")
+
+	stdout, _, exitCode := runGw(t, repo.Root, "add", "feature-done", "--generate-shell-completion")
+
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0", exitCode)
+	}
+	// Should not list branches since positional arg is already provided
+	if strings.Contains(stdout, "main") {
+		t.Errorf("expected no branch completions after positional arg, got: %q", stdout)
+	}
+}
+
+func TestCompletion_Rm_Worktrees(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/rm-complete")
+	if exitCode != 0 {
+		t.Fatalf("gw add exit code = %d, want 0", exitCode)
+	}
+	wtPath := strings.TrimSpace(addStdout)
+
+	stdout, _, exitCode := runGw(t, repo.Root, "rm", "--generate-shell-completion")
+
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0", exitCode)
+	}
+	if !strings.Contains(stdout, wtPath) {
+		t.Errorf("expected worktree path %q in completion output, got: %q", wtPath, stdout)
+	}
+	// Should not contain main worktree as its own line
+	for _, line := range strings.Split(strings.TrimSpace(stdout), "\n") {
+		if line == repo.Root {
+			t.Errorf("expected main worktree NOT in completion output, got: %q", stdout)
+		}
+	}
+}
+
+func TestCompletion_Rm_NoCompletionAfterPath(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/rm-nocomp")
+	if exitCode != 0 {
+		t.Fatalf("gw add exit code = %d, want 0", exitCode)
+	}
+	wtPath := strings.TrimSpace(addStdout)
+
+	stdout, _, exitCode := runGw(t, repo.Root, "rm", wtPath, "--generate-shell-completion")
+
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0", exitCode)
+	}
+	// Should not list worktree paths since positional arg is already provided
+	if strings.Contains(stdout, "worktrees") {
+		t.Errorf("expected no worktree completions after positional arg, got: %q", stdout)
+	}
+}
+
+func TestCompletion_Rm_AfterForceFlag(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/force-comp")
+	if exitCode != 0 {
+		t.Fatalf("gw add exit code = %d, want 0", exitCode)
+	}
+	wtPath := strings.TrimSpace(addStdout)
+
+	stdout, _, exitCode := runGw(t, repo.Root, "rm", "--force", "--generate-shell-completion")
+
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0", exitCode)
+	}
+	// After --force, should complete worktree paths (not flags)
+	if !strings.Contains(stdout, wtPath) {
+		t.Errorf("expected worktree path %q in completion output after --force, got: %q", wtPath, stdout)
+	}
+}
+
+func TestCompletion_CompletionSubcommand(t *testing.T) {
+	stdout, _, exitCode := runGw(t, t.TempDir(), "completion", "bash")
+
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0", exitCode)
+	}
+	if !strings.Contains(stdout, "compgen") && !strings.Contains(stdout, "complete") {
+		t.Errorf("expected bash completion script, got: %q", stdout)
+	}
+}

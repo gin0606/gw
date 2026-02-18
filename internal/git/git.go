@@ -95,6 +95,36 @@ type Worktree struct {
 	Branch string
 }
 
+// ListLocalBranches returns the short names of all local branches.
+func ListLocalBranches(repoRoot string) ([]string, error) {
+	cmd := exec.Command("git", "for-each-ref", "--format=%(refname:short)", "refs/heads/")
+	cmd.Dir = repoRoot
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list local branches: %w", err)
+	}
+	return splitLines(string(out)), nil
+}
+
+// ListRefs returns the short names of all local branches, remote branches, and tags.
+func ListRefs(repoRoot string) ([]string, error) {
+	cmd := exec.Command("git", "for-each-ref", "--format=%(refname:short)", "refs/heads/", "refs/remotes/", "refs/tags/")
+	cmd.Dir = repoRoot
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list refs: %w", err)
+	}
+	return splitLines(string(out)), nil
+}
+
+func splitLines(s string) []string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	return strings.Split(s, "\n")
+}
+
 // ListWorktrees parses `git worktree list --porcelain` and returns all worktrees.
 func ListWorktrees(repoRoot string) ([]Worktree, error) {
 	cmd := exec.Command("git", "worktree", "list", "--porcelain")

@@ -13,9 +13,10 @@ var version = "0.1.0"
 
 func main() {
 	root := &cli.Command{
-		Name:    "gw",
-		Usage:   "A thin wrapper around git worktree",
-		Version: version,
+		Name:                  "gw",
+		Usage:                 "A thin wrapper around git worktree",
+		Version:               version,
+		EnableShellCompletion: true,
 		Commands: []*cli.Command{
 			cmdInit(),
 			cmdAdd(),
@@ -45,9 +46,10 @@ func cmdInit() *cli.Command {
 
 func cmdAdd() *cli.Command {
 	return &cli.Command{
-		Name:      "add",
-		Usage:     "Create a new worktree",
-		UsageText: "gw add [--from <ref>] <branch>",
+		Name:          "add",
+		Usage:         "Create a new worktree",
+		UsageText:     "gw add [--from <ref>] <branch>",
+		ShellComplete: completeAdd,
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "from", Usage: "Create new branch from specified ref"},
 		},
@@ -65,9 +67,10 @@ func cmdAdd() *cli.Command {
 
 func cmdRemove() *cli.Command {
 	return &cli.Command{
-		Name:      "rm",
-		Usage:     "Remove a worktree",
-		UsageText: "gw rm [--force] <path>",
+		Name:          "rm",
+		Usage:         "Remove a worktree",
+		UsageText:     "gw rm [--force] <path>",
+		ShellComplete: completeRemove,
 		Flags: []cli.Flag{
 			&cli.BoolFlag{Name: "force", Usage: "Force removal even if worktree is dirty or hook fails"},
 		},

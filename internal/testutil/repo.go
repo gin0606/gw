@@ -63,6 +63,12 @@ func (r *TestRepo) PushBranch(name string) {
 	gitCmd(r.t, r.Root, "push", "origin", name)
 }
 
+// CreateTag creates a lightweight tag at the current HEAD.
+func (r *TestRepo) CreateTag(name string) {
+	r.t.Helper()
+	gitCmd(r.t, r.Root, "tag", name)
+}
+
 // DeleteOriginHead removes origin/HEAD symbolic ref.
 func (r *TestRepo) DeleteOriginHead() {
 	r.t.Helper()
