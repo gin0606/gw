@@ -34,7 +34,7 @@ CI runs `go vet ./...` and `go test ./...`.
 ```
 cmd/gw/main.go          Entry point. Parses args and dispatches to subcommands
 internal/
-  cmd/                   Subcommand implementations (init, add, rm, go, version)
+  cmd/                   Subcommand implementations (init, add, rm, list)
   git/                   Git command wrappers (RepoRoot, BranchExists, ListWorktrees, etc.)
   config/                Loads .gw/config (TOML)
   hook/                  Hook execution engine for .gw/hooks/
@@ -45,21 +45,11 @@ internal/
 
 ### Subcommand Common Flow
 
-Each subcommand (`cmd/add.go`, `cmd/remove.go`, `cmd/go.go`) follows the same pattern:
+Each subcommand follows the same pattern:
 1. Detect repository root (`git.RepoRoot`)
 2. Load config (`config.Load`) → compute base directory (`pathutil.BaseDir`)
 3. Execute command-specific logic
 
-### Output Convention
-
-- **stdout**: Data only (paths, etc.) — used for shell integration like `cd "$(gw add ...)"`
-- **stderr**: Logs, hook output, and errors. Git command output is also directed here
-- Error message format: `gw: error: <message>` / `gw: warning: <message>`
-
 ### Test Pattern
 
 Tests use `testutil.NewTestRepo(t)` to create a temporary environment with a bare repository + clone. They are integration-style tests that execute real git commands.
-
-## Specification
-
-See `SPECIFICATION.md` for detailed specs including path calculation rules, hook execution timing, and identifier resolution order.
