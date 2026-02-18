@@ -40,21 +40,76 @@ func Init() error {
 		return err
 	}
 
-	postAddContent := `#!/bin/sh
+	hooks := []struct {
+		name    string
+		content string
+	}{
+		{"pre-add", `#!/bin/sh
+# This hook is called before a worktree is created.
+# Working directory: repository root
+#
+# Available environment variables:
+#   GW_REPO_ROOT       - Main repository root
+#   GW_WORKTREE_PATH   - Worktree path (to be created)
+#   GW_BRANCH          - Branch name
+#
+# Exit non-zero to abort worktree creation.
+#
+# Example: Fetch latest remote so the new worktree starts from up-to-date origin/main
+# git fetch origin
+`},
+		{"post-add", `#!/bin/sh
 # This hook is called after a worktree is created.
-# See https://github.com/gin0606/gw for other available hooks.
+# Working directory: the new worktree
 #
 # Available environment variables:
 #   GW_REPO_ROOT       - Main repository root
 #   GW_WORKTREE_PATH   - Worktree path
 #   GW_BRANCH          - Branch name
 #
-# Example: Install dependencies
+# Example: Install dependencies and copy files not tracked by git
 # npm install
-`
-	if err := os.WriteFile(filepath.Join(hooksDir, "post-add"), []byte(postAddContent), 0755); err != nil {
-		os.RemoveAll(gwDir)
-		return err
+# cp "$GW_REPO_ROOT/.env" "$GW_WORKTREE_PATH/.env"
+`},
+		{"pre-remove", `#!/bin/sh
+# This hook is called before a worktree is removed.
+# Working directory: the worktree being removed
+#
+# Available environment variables:
+#   GW_REPO_ROOT       - Main repository root
+#   GW_WORKTREE_PATH   - Worktree path (to be removed)
+#   GW_BRANCH          - Branch name
+#
+# Exit non-zero to abort worktree removal (skipped with --force).
+#
+# Example: Stop development servers before removing the worktree
+# docker compose down
+`},
+		{"post-remove", `#!/bin/sh
+# This hook is called after a worktree is removed.
+# Working directory: repository root
+#
+# Available environment variables:
+#   GW_REPO_ROOT       - Main repository root
+#   GW_WORKTREE_PATH   - Worktree path (already removed)
+#   GW_BRANCH          - Branch name
+#
+# Example: Fetch and delete the branch if it has been merged
+# git fetch --prune origin
+# if ! git branch --list "$GW_BRANCH" | grep -q .; then
+#   exit 0
+# fi
+# if git merge-base --is-ancestor "$GW_BRANCH" origin/main; then
+#   git branch -D "$GW_BRANCH"
+# fi
+`},
+	}
+
+	for _, h := range hooks {
+		if err := os.WriteFile(filepath.Join(hooksDir, h.name), []byte(h.content), 0755); err != nil {
+			os.RemoveAll(gwDir)
+			return err
+		}
 	}
 
 	fmt.Fprintf(os.Stderr, "Initialized .gw/ in %s\n", repoRoot)
