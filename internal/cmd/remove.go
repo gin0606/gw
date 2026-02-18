@@ -6,47 +6,54 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/gin0606/gw/internal/config"
 	"github.com/gin0606/gw/internal/git"
 	"github.com/gin0606/gw/internal/hook"
-	"github.com/gin0606/gw/internal/pathutil"
-	"github.com/gin0606/gw/internal/resolve"
 )
 
 // Remove implements the "gw rm" command.
-func Remove(identifier string, force bool) error {
-	// 1. Detect repo root
+func Remove(path string, force bool) error {
+	// 1. Normalize path to absolute and resolve symlinks
+	wtPath, err := filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+	if resolved, err := filepath.EvalSymlinks(wtPath); err == nil {
+		wtPath = resolved
+	}
+
+	// 2. Detect repo root from current working directory
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-
 	repoRoot, err := git.RepoRoot(cwd)
 	if err != nil {
 		return err
 	}
 
-	// Load config and resolve base directory
-	cfg, err := config.Load(repoRoot)
+	// 3. Look up the worktree to get its branch name (needed for hooks)
+	worktrees, err := git.ListWorktrees(repoRoot)
 	if err != nil {
 		return err
 	}
 
-	repoName := git.RepoName(repoRoot)
-	baseDir := pathutil.BaseDir(repoRoot, repoName, cfg.WorktreesDir)
-
-	baseDir, err = filepath.Abs(baseDir)
-	if err != nil {
-		return err
+	var branch string
+	found := false
+	for _, wt := range worktrees {
+		if wt.Path == wtPath {
+			branch = wt.Branch
+			found = true
+			break
+		}
+	}
+	if !found {
+		return fmt.Errorf("path %q is not a git worktree", wtPath)
+	}
+	if wtPath == repoRoot {
+		return fmt.Errorf("cannot remove the main worktree")
 	}
 
-	// Resolve identifier to worktree path and branch
-	wtPath, branch, err := resolve.Resolve(repoRoot, baseDir, identifier)
-	if err != nil {
-		return err
-	}
-
-	// 2. Run pre-remove hook (in worktree directory)
+	// Run pre-remove hook (in worktree directory)
 	if err := hook.Run(repoRoot, "pre-remove", wtPath, wtPath, branch, os.Stderr); err != nil {
 		if !force {
 			return fmt.Errorf("pre-remove hook failed: %w", err)

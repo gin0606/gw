@@ -589,7 +589,7 @@ func TestRm_Basic(t *testing.T) {
 	wtPath := strings.TrimSpace(addStdout)
 
 	// Remove it
-	stdout, _, exitCode := runGw(t, repo.Root, "rm", "feature/rm-test")
+	stdout, _, exitCode := runGw(t, repo.Root, "rm", wtPath)
 
 	if exitCode != 0 {
 		t.Errorf("exit code = %d, want 0", exitCode)
@@ -627,7 +627,7 @@ func TestRm_UncommittedChanges_WithoutForce(t *testing.T) {
 	}
 
 	// Remove without --force should fail
-	_, _, exitCode = runGw(t, repo.Root, "rm", "feature/dirty-no-force")
+	_, _, exitCode = runGw(t, repo.Root, "rm", wtPath)
 
 	if exitCode != 1 {
 		t.Errorf("exit code = %d, want 1", exitCode)
@@ -660,7 +660,7 @@ func TestRm_Force_UncommittedChanges(t *testing.T) {
 	}
 
 	// Remove with --force
-	_, _, exitCode = runGw(t, repo.Root, "rm", "feature/force-rm", "--force")
+	_, _, exitCode = runGw(t, repo.Root, "rm", wtPath, "--force")
 
 	if exitCode != 0 {
 		t.Errorf("exit code = %d, want 0", exitCode)
@@ -686,7 +686,7 @@ func TestRm_PreRemoveHook_Failure_NoForce(t *testing.T) {
 	repo.WriteHook("pre-remove", "#!/bin/sh\nexit 1\n")
 
 	// Try to remove
-	_, _, exitCode = runGw(t, repo.Root, "rm", "feature/hook-rm")
+	_, _, exitCode = runGw(t, repo.Root, "rm", wtPath)
 
 	if exitCode != 1 {
 		t.Errorf("exit code = %d, want 1", exitCode)
@@ -712,7 +712,7 @@ func TestRm_PreRemoveHook_Failure_WithForce(t *testing.T) {
 	repo.WriteHook("pre-remove", "#!/bin/sh\nexit 1\n")
 
 	// Remove with --force
-	_, stderr, exitCode := runGw(t, repo.Root, "rm", "feature/hook-force-rm", "--force")
+	_, stderr, exitCode := runGw(t, repo.Root, "rm", wtPath, "--force")
 
 	if exitCode != 0 {
 		t.Errorf("exit code = %d, want 0", exitCode)
@@ -742,7 +742,7 @@ func TestRm_PostRemoveHook_Failure(t *testing.T) {
 	repo.WriteHook("post-remove", "#!/bin/sh\nexit 1\n")
 
 	// Remove
-	_, stderr, exitCode := runGw(t, repo.Root, "rm", "feature/post-rm")
+	_, stderr, exitCode := runGw(t, repo.Root, "rm", wtPath)
 
 	if exitCode != 0 {
 		t.Errorf("exit code = %d, want 0", exitCode)
@@ -761,13 +761,19 @@ func TestRm_PostRemoveHook_Failure(t *testing.T) {
 func TestRm_NotFound(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
-	_, stderr, exitCode := runGw(t, repo.Root, "rm", "nonexistent")
+	// Create a subdirectory that is inside the repo but is not a worktree
+	subdir := filepath.Join(repo.Root, "subdir")
+	if err := os.MkdirAll(subdir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	_, stderr, exitCode := runGw(t, repo.Root, "rm", subdir)
 
 	if exitCode != 1 {
 		t.Errorf("exit code = %d, want 1", exitCode)
 	}
-	if !strings.Contains(stderr, "not found") {
-		t.Errorf("expected 'not found' in stderr, got: %q", stderr)
+	if !strings.Contains(stderr, "not a git worktree") {
+		t.Errorf("expected 'not a git worktree' in stderr, got: %q", stderr)
 	}
 }
 
@@ -775,13 +781,14 @@ func TestRm_BranchSurvives(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
 	// Create a worktree
-	_, _, exitCode := runGw(t, repo.Root, "add", "feature/branch-survives")
+	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/branch-survives")
 	if exitCode != 0 {
 		t.Fatalf("gw add exit code = %d, want 0", exitCode)
 	}
+	wtPath := strings.TrimSpace(addStdout)
 
 	// Remove it
-	_, _, exitCode = runGw(t, repo.Root, "rm", "feature/branch-survives")
+	_, _, exitCode = runGw(t, repo.Root, "rm", wtPath)
 	if exitCode != 0 {
 		t.Fatalf("gw rm exit code = %d, want 0", exitCode)
 	}
@@ -798,13 +805,14 @@ func TestRm_EmptyStdout(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
 	// Create a worktree
-	_, _, exitCode := runGw(t, repo.Root, "add", "feature/empty-stdout")
+	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/empty-stdout")
 	if exitCode != 0 {
 		t.Fatalf("gw add exit code = %d, want 0", exitCode)
 	}
+	wtPath := strings.TrimSpace(addStdout)
 
 	// Remove it
-	stdout, _, exitCode := runGw(t, repo.Root, "rm", "feature/empty-stdout")
+	stdout, _, exitCode := runGw(t, repo.Root, "rm", wtPath)
 	if exitCode != 0 {
 		t.Fatalf("gw rm exit code = %d, want 0", exitCode)
 	}
@@ -822,15 +830,28 @@ func TestRm_NoArgs(t *testing.T) {
 	if exitCode != 1 {
 		t.Errorf("exit code = %d, want 1", exitCode)
 	}
-	if !strings.Contains(stderr, "identifier required") {
-		t.Errorf("expected 'identifier required' in stderr, got: %q", stderr)
+	if !strings.Contains(stderr, "path required") {
+		t.Errorf("expected 'path required' in stderr, got: %q", stderr)
+	}
+}
+
+func TestRm_MainWorktree(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	_, stderr, exitCode := runGw(t, repo.Root, "rm", repo.Root)
+
+	if exitCode != 1 {
+		t.Errorf("exit code = %d, want 1", exitCode)
+	}
+	if !strings.Contains(stderr, "cannot remove the main worktree") {
+		t.Errorf("expected 'cannot remove the main worktree' in stderr, got: %q", stderr)
 	}
 }
 
 func TestRm_OutsideGitRepo(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	_, _, exitCode := runGw(t, tmpDir, "rm", "feature/test")
+	_, _, exitCode := runGw(t, tmpDir, "rm", "/nonexistent/path")
 
 	if exitCode != 1 {
 		t.Errorf("exit code = %d, want 1", exitCode)
@@ -850,7 +871,7 @@ func TestRm_ExtraArgs(t *testing.T) {
 	}
 }
 
-func TestRm_ForceFlagBeforeIdentifier(t *testing.T) {
+func TestRm_ForceFlagBeforePath(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
 	// Create a worktree
@@ -860,8 +881,8 @@ func TestRm_ForceFlagBeforeIdentifier(t *testing.T) {
 	}
 	wtPath := strings.TrimSpace(addStdout)
 
-	// Remove with --force before identifier
-	_, _, exitCode = runGw(t, repo.Root, "rm", "--force", "feature/flag-order")
+	// Remove with --force before path
+	_, _, exitCode = runGw(t, repo.Root, "rm", "--force", wtPath)
 
 	if exitCode != 0 {
 		t.Errorf("exit code = %d, want 0", exitCode)
@@ -890,7 +911,7 @@ func TestRm_FromWorktree(t *testing.T) {
 	targetPath := strings.TrimSpace(addStdout2)
 
 	// Remove the target from inside the source worktree
-	_, _, exitCode = runGw(t, sourcePath, "rm", "feature/rm-target")
+	_, _, exitCode = runGw(t, sourcePath, "rm", targetPath)
 
 	if exitCode != 0 {
 		t.Errorf("exit code = %d, want 0", exitCode)
@@ -902,7 +923,59 @@ func TestRm_FromWorktree(t *testing.T) {
 	}
 }
 
-func TestRm_ForceOnly_NoIdentifier(t *testing.T) {
+func TestRm_RelativePath(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	// Create a worktree
+	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/rel-path")
+	if exitCode != 0 {
+		t.Fatalf("gw add exit code = %d, want 0", exitCode)
+	}
+	wtPath := strings.TrimSpace(addStdout)
+
+	// Compute relative path from repo root to the worktree
+	relPath, err := filepath.Rel(repo.Root, wtPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Remove using relative path
+	_, _, exitCode = runGw(t, repo.Root, "rm", relPath)
+
+	if exitCode != 0 {
+		t.Errorf("exit code = %d, want 0", exitCode)
+	}
+
+	// Worktree directory should be gone
+	if _, err := os.Stat(wtPath); !os.IsNotExist(err) {
+		t.Errorf("worktree directory should have been removed: %s", wtPath)
+	}
+}
+
+func TestRm_StaleWorktree(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	// Create a worktree
+	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/stale")
+	if exitCode != 0 {
+		t.Fatalf("gw add exit code = %d, want 0", exitCode)
+	}
+	wtPath := strings.TrimSpace(addStdout)
+
+	// Manually delete the worktree directory to simulate a stale entry
+	if err := os.RemoveAll(wtPath); err != nil {
+		t.Fatal(err)
+	}
+
+	// Remove the stale worktree with --force from repo root
+	_, _, exitCode = runGw(t, repo.Root, "rm", "--force", wtPath)
+
+	if exitCode != 0 {
+		t.Errorf("exit code = %d, want 0", exitCode)
+	}
+}
+
+func TestRm_ForceOnly_NoPath(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
 	_, stderr, exitCode := runGw(t, repo.Root, "rm", "--force")
@@ -910,7 +983,7 @@ func TestRm_ForceOnly_NoIdentifier(t *testing.T) {
 	if exitCode != 1 {
 		t.Errorf("exit code = %d, want 1", exitCode)
 	}
-	if !strings.Contains(stderr, "identifier required") {
-		t.Errorf("expected 'identifier required' in stderr, got: %q", stderr)
+	if !strings.Contains(stderr, "path required") {
+		t.Errorf("expected 'path required' in stderr, got: %q", stderr)
 	}
 }

@@ -70,7 +70,7 @@ func cmdRemove() *cli.Command {
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			if c.Args().Len() < 1 {
-				return fmt.Errorf("identifier required")
+				return fmt.Errorf("path required")
 			}
 			if c.Args().Len() > 1 {
 				return fmt.Errorf("unexpected argument: %s", c.Args().Get(1))

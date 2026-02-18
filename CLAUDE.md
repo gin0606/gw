@@ -39,7 +39,6 @@ internal/
   config/                Loads .gw/config (TOML)
   hook/                  Hook execution engine for .gw/hooks/
   pathutil/              Branch name sanitization and worktree path calculation
-  resolve/               Resolves identifier → worktree path (reverse lookup)
   testutil/              Test helper for creating temporary git repositories
 ```
 
