@@ -13,31 +13,22 @@ import (
 )
 
 // Add implements the "gw add" command.
-func Add(args []string) int {
-	branch, from, err := parseAddArgs(args)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "gw: error: %v\n", err)
-		return 1
-	}
-
+func Add(branch, from string) error {
 	// 1. Detect repo root
 	cwd, err := os.Getwd()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "gw: error: %v\n", err)
-		return 1
+		return err
 	}
 
 	repoRoot, err := git.RepoRoot(cwd)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "gw: error: %v\n", err)
-		return 1
+		return err
 	}
 
 	// 2. Calculate worktree path
 	cfg, err := config.Load(repoRoot)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "gw: error: %v\n", err)
-		return 1
+		return err
 	}
 
 	repoName := git.RepoName(repoRoot)
@@ -45,31 +36,26 @@ func Add(args []string) int {
 
 	baseDir, err = filepath.Abs(baseDir)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "gw: error: %v\n", err)
-		return 1
+		return err
 	}
 
 	wtPath, err := pathutil.ComputePath(baseDir, branch)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "gw: error: %v\n", err)
-		return 1
+		return err
 	}
 
 	if err := pathutil.ValidatePath(wtPath); err != nil {
-		fmt.Fprintf(os.Stderr, "gw: error: %v\n", err)
-		return 1
+		return err
 	}
 
 	// 3. Check branch existence, validate args, and resolve start-point ref
 	exists, err := git.BranchExists(repoRoot, branch)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "gw: error: %v\n", err)
-		return 1
+		return err
 	}
 
 	if exists && from != "" {
-		fmt.Fprintf(os.Stderr, "gw: error: branch '%s' already exists; --from cannot be used\n", branch)
-		return 1
+		return fmt.Errorf("branch '%s' already exists; --from cannot be used", branch)
 	}
 
 	var gitArgs []string
@@ -80,15 +66,13 @@ func Add(args []string) int {
 		} else {
 			defaultBranch, err := git.DefaultBranch(repoRoot)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "gw: error: %v\n", err)
-				return 1
+				return err
 			}
 
 			remoteRef := "origin/" + defaultBranch
 			remoteExists, err := git.RemoteRefExists(repoRoot, remoteRef)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "gw: error: %v\n", err)
-				return 1
+				return err
 			}
 
 			if remoteExists {
@@ -103,25 +87,22 @@ func Add(args []string) int {
 
 	// Ensure base directory exists
 	if err := pathutil.EnsureBaseDir(baseDir); err != nil {
-		fmt.Fprintf(os.Stderr, "gw: error: %v\n", err)
-		return 1
+		return err
 	}
 
 	// 4. Run pre-add hook (at repo root)
 	if err := hook.Run(repoRoot, "pre-add", repoRoot, wtPath, branch, os.Stderr); err != nil {
-		fmt.Fprintf(os.Stderr, "gw: error: pre-add hook failed: %v\n", err)
-		return 1
+		return fmt.Errorf("pre-add hook failed: %w", err)
 	}
 
 	// 5. Create worktree
-
 	gitCmd := exec.Command("git", gitArgs...)
 	gitCmd.Dir = repoRoot
 	gitCmd.Stdout = os.Stderr
 	gitCmd.Stderr = os.Stderr
 
 	if err := gitCmd.Run(); err != nil {
-		return 1
+		return fmt.Errorf("git worktree add failed: %w", err)
 	}
 
 	// 6. Run post-add hook (in worktree directory)
@@ -132,28 +113,5 @@ func Add(args []string) int {
 	// 7. Output path to stdout
 	fmt.Println(wtPath)
 
-	return 0
-}
-
-func parseAddArgs(args []string) (branch, from string, err error) {
-	if len(args) == 0 {
-		return "", "", fmt.Errorf("branch name required")
-	}
-
-	branch = args[0]
-
-	for i := 1; i < len(args); i++ {
-		switch args[i] {
-		case "--from":
-			if i+1 >= len(args) {
-				return "", "", fmt.Errorf("--from requires a value")
-			}
-			from = args[i+1]
-			i++
-		default:
-			return "", "", fmt.Errorf("unknown argument: %s", args[i])
-		}
-	}
-
-	return branch, from, nil
+	return nil
 }

@@ -54,35 +54,29 @@ func runGw(t *testing.T, dir string, args ...string) (stdout, stderr string, exi
 	return outBuf.String(), errBuf.String(), exitCode
 }
 
-// --- Phase 1: CLI skeleton ---
+// --- CLI skeleton ---
 
 func TestNoArgs(t *testing.T) {
-	_, stderr, exitCode := runGw(t, t.TempDir())
+	stdout, _, exitCode := runGw(t, t.TempDir())
 
-	if exitCode != 1 {
-		t.Errorf("exit code = %d, want 1", exitCode)
+	if exitCode != 0 {
+		t.Errorf("exit code = %d, want 0", exitCode)
 	}
-	if !strings.Contains(stderr, "usage:") {
-		t.Errorf("expected usage in stderr, got: %q", stderr)
+	if !strings.Contains(stdout, "COMMANDS") {
+		t.Errorf("expected help output in stdout, got: %q", stdout)
 	}
 }
 
 func TestUnknownCommand(t *testing.T) {
-	_, stderr, exitCode := runGw(t, t.TempDir(), "foo")
+	_, _, exitCode := runGw(t, t.TempDir(), "foo")
 
-	if exitCode != 1 {
-		t.Errorf("exit code = %d, want 1", exitCode)
-	}
-	if !strings.Contains(stderr, "usage:") {
-		t.Errorf("expected usage in stderr, got: %q", stderr)
-	}
-	if !strings.Contains(stderr, "gw: error:") {
-		t.Errorf("expected 'gw: error:' format in stderr, got: %q", stderr)
+	if exitCode == 0 {
+		t.Errorf("expected non-zero exit code, got 0")
 	}
 }
 
 func TestVersion(t *testing.T) {
-	stdout, _, exitCode := runGw(t, t.TempDir(), "version")
+	stdout, _, exitCode := runGw(t, t.TempDir(), "--version")
 
 	if exitCode != 0 {
 		t.Errorf("exit code = %d, want 0", exitCode)
@@ -172,8 +166,8 @@ func TestInit_ExtraArgs(t *testing.T) {
 	if exitCode != 1 {
 		t.Errorf("exit code = %d, want 1", exitCode)
 	}
-	if !strings.Contains(stderr, "gw: error:") {
-		t.Errorf("expected 'gw: error:' format in stderr, got: %q", stderr)
+	if !strings.Contains(stderr, "unexpected argument") {
+		t.Errorf("expected 'unexpected argument' in stderr, got: %q", stderr)
 	}
 }
 
@@ -196,7 +190,7 @@ func TestInit_FromWorktree(t *testing.T) {
 	}
 }
 
-// --- Phase 5: gw add ---
+// --- gw add ---
 
 func TestAdd_NewBranch(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
@@ -282,8 +276,34 @@ func TestAdd_ExistingBranch_WithFrom_Error(t *testing.T) {
 	if exitCode != 1 {
 		t.Errorf("exit code = %d, want 1", exitCode)
 	}
-	if !strings.Contains(stderr, "gw: error:") {
-		t.Errorf("expected 'gw: error:' format, got: %q", stderr)
+	if !strings.Contains(stderr, "already exists") {
+		t.Errorf("expected 'already exists' in stderr, got: %q", stderr)
+	}
+}
+
+func TestAdd_NoArgs(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	_, stderr, exitCode := runGw(t, repo.Root, "add")
+
+	if exitCode != 1 {
+		t.Errorf("exit code = %d, want 1", exitCode)
+	}
+	if !strings.Contains(stderr, "branch name required") {
+		t.Errorf("expected 'branch name required' in stderr, got: %q", stderr)
+	}
+}
+
+func TestAdd_ExtraArgs(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	_, stderr, exitCode := runGw(t, repo.Root, "add", "feature/foo", "extra")
+
+	if exitCode != 1 {
+		t.Errorf("exit code = %d, want 1", exitCode)
+	}
+	if !strings.Contains(stderr, "unexpected argument") {
+		t.Errorf("expected 'unexpected argument' in stderr, got: %q", stderr)
 	}
 }
 
@@ -437,111 +457,126 @@ func TestAdd_ExistingBranch_WithFrom_PreAddNotExecuted(t *testing.T) {
 	}
 }
 
-// --- Phase 7: gw go ---
+// --- gw list ---
 
-func TestGo_Resolved(t *testing.T) {
+func TestList_Basic(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
-	// Create a worktree via gw add
-	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/go-test")
+	// Create a worktree
+	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/list-test")
 	if exitCode != 0 {
 		t.Fatalf("gw add exit code = %d, want 0", exitCode)
 	}
-	addPath := strings.TrimSpace(addStdout)
+	wtPath := strings.TrimSpace(addStdout)
 
-	// Resolve via gw go
-	stdout, _, exitCode := runGw(t, repo.Root, "go", "feature/go-test")
+	// List worktrees
+	stdout, _, exitCode := runGw(t, repo.Root, "list")
 
 	if exitCode != 0 {
 		t.Errorf("exit code = %d, want 0", exitCode)
 	}
 
-	goPath := strings.TrimSpace(stdout)
-	if goPath != addPath {
-		t.Errorf("got %q, want %q", goPath, addPath)
+	if !strings.Contains(stdout, wtPath) {
+		t.Errorf("expected list to contain %q, got: %q", wtPath, stdout)
+	}
+
+	if !strings.Contains(stdout, repo.Root) {
+		t.Errorf("expected list to contain repo root %q, got: %q", repo.Root, stdout)
 	}
 }
 
-func TestGo_NotFound(t *testing.T) {
+func TestList_NoWorktrees(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
-	_, stderr, exitCode := runGw(t, repo.Root, "go", "nonexistent")
+	stdout, _, exitCode := runGw(t, repo.Root, "list")
+
+	if exitCode != 0 {
+		t.Errorf("exit code = %d, want 0", exitCode)
+	}
+
+	// Should contain at least the main repo
+	if !strings.Contains(stdout, repo.Root) {
+		t.Errorf("expected list to contain repo root %q, got: %q", repo.Root, stdout)
+	}
+}
+
+func TestList_MultipleWorktrees(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	addStdout1, _, exitCode := runGw(t, repo.Root, "add", "feature/list-one")
+	if exitCode != 0 {
+		t.Fatalf("gw add exit code = %d, want 0", exitCode)
+	}
+	wt1 := strings.TrimSpace(addStdout1)
+
+	addStdout2, _, exitCode := runGw(t, repo.Root, "add", "feature/list-two")
+	if exitCode != 0 {
+		t.Fatalf("gw add exit code = %d, want 0", exitCode)
+	}
+	wt2 := strings.TrimSpace(addStdout2)
+
+	stdout, _, exitCode := runGw(t, repo.Root, "list")
+
+	if exitCode != 0 {
+		t.Errorf("exit code = %d, want 0", exitCode)
+	}
+
+	if !strings.Contains(stdout, wt1) {
+		t.Errorf("expected list to contain %q, got: %q", wt1, stdout)
+	}
+	if !strings.Contains(stdout, wt2) {
+		t.Errorf("expected list to contain %q, got: %q", wt2, stdout)
+	}
+}
+
+func TestList_FromWorktree(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/list-from-wt")
+	if exitCode != 0 {
+		t.Fatalf("gw add exit code = %d, want 0", exitCode)
+	}
+	wtPath := strings.TrimSpace(addStdout)
+
+	// Run list from inside the worktree
+	stdout, _, exitCode := runGw(t, wtPath, "list")
+
+	if exitCode != 0 {
+		t.Errorf("exit code = %d, want 0", exitCode)
+	}
+
+	if !strings.Contains(stdout, repo.Root) {
+		t.Errorf("expected list to contain repo root %q, got: %q", repo.Root, stdout)
+	}
+	if !strings.Contains(stdout, wtPath) {
+		t.Errorf("expected list to contain worktree %q, got: %q", wtPath, stdout)
+	}
+}
+
+func TestList_ExtraArgs(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	_, stderr, exitCode := runGw(t, repo.Root, "list", "extra")
 
 	if exitCode != 1 {
 		t.Errorf("exit code = %d, want 1", exitCode)
 	}
-	if !strings.Contains(stderr, "gw: error:") {
-		t.Errorf("expected 'gw: error:' format in stderr, got: %q", stderr)
+	if !strings.Contains(stderr, "unexpected argument") {
+		t.Errorf("expected 'unexpected argument' in stderr, got: %q", stderr)
 	}
 }
 
-func TestGo_NoArgs(t *testing.T) {
-	repo := testutil.NewTestRepo(t)
-
-	_, stderr, exitCode := runGw(t, repo.Root, "go")
-
-	if exitCode != 1 {
-		t.Errorf("exit code = %d, want 1", exitCode)
-	}
-	if !strings.Contains(stderr, "gw: error:") {
-		t.Errorf("expected 'gw: error:' format in stderr, got: %q", stderr)
-	}
-}
-
-func TestGo_OutsideGitRepo(t *testing.T) {
+func TestList_OutsideGitRepo(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	_, _, exitCode := runGw(t, tmpDir, "go", "feature/test")
+	_, _, exitCode := runGw(t, tmpDir, "list")
 
 	if exitCode != 1 {
 		t.Errorf("exit code = %d, want 1", exitCode)
 	}
 }
 
-func TestGo_ExtraArgs(t *testing.T) {
-	repo := testutil.NewTestRepo(t)
-
-	_, stderr, exitCode := runGw(t, repo.Root, "go", "feature/foo", "extra")
-
-	if exitCode != 1 {
-		t.Errorf("exit code = %d, want 1", exitCode)
-	}
-	if !strings.Contains(stderr, "gw: error:") {
-		t.Errorf("expected 'gw: error:' format in stderr, got: %q", stderr)
-	}
-}
-
-func TestGo_FromWorktree(t *testing.T) {
-	repo := testutil.NewTestRepo(t)
-
-	// Create a worktree via gw add
-	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/wt-source")
-	if exitCode != 0 {
-		t.Fatalf("gw add exit code = %d, want 0", exitCode)
-	}
-	sourcePath := strings.TrimSpace(addStdout)
-
-	// Create another worktree to resolve
-	addStdout2, _, exitCode := runGw(t, repo.Root, "add", "feature/wt-target")
-	if exitCode != 0 {
-		t.Fatalf("gw add exit code = %d, want 0", exitCode)
-	}
-	targetPath := strings.TrimSpace(addStdout2)
-
-	// Run gw go from inside the first worktree
-	stdout, _, exitCode := runGw(t, sourcePath, "go", "feature/wt-target")
-
-	if exitCode != 0 {
-		t.Errorf("exit code = %d, want 0", exitCode)
-	}
-
-	goPath := strings.TrimSpace(stdout)
-	if goPath != targetPath {
-		t.Errorf("got %q, want %q", goPath, targetPath)
-	}
-}
-
-// --- Phase 8: gw rm ---
+// --- gw rm ---
 
 func TestRm_Basic(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
@@ -731,8 +766,8 @@ func TestRm_NotFound(t *testing.T) {
 	if exitCode != 1 {
 		t.Errorf("exit code = %d, want 1", exitCode)
 	}
-	if !strings.Contains(stderr, "gw: error:") {
-		t.Errorf("expected 'gw: error:' format in stderr, got: %q", stderr)
+	if !strings.Contains(stderr, "not found") {
+		t.Errorf("expected 'not found' in stderr, got: %q", stderr)
 	}
 }
 
@@ -787,8 +822,8 @@ func TestRm_NoArgs(t *testing.T) {
 	if exitCode != 1 {
 		t.Errorf("exit code = %d, want 1", exitCode)
 	}
-	if !strings.Contains(stderr, "gw: error:") {
-		t.Errorf("expected 'gw: error:' format in stderr, got: %q", stderr)
+	if !strings.Contains(stderr, "identifier required") {
+		t.Errorf("expected 'identifier required' in stderr, got: %q", stderr)
 	}
 }
 
@@ -810,8 +845,8 @@ func TestRm_ExtraArgs(t *testing.T) {
 	if exitCode != 1 {
 		t.Errorf("exit code = %d, want 1", exitCode)
 	}
-	if !strings.Contains(stderr, "gw: error:") {
-		t.Errorf("expected 'gw: error:' format in stderr, got: %q", stderr)
+	if !strings.Contains(stderr, "unexpected argument") {
+		t.Errorf("expected 'unexpected argument' in stderr, got: %q", stderr)
 	}
 }
 
@@ -875,7 +910,7 @@ func TestRm_ForceOnly_NoIdentifier(t *testing.T) {
 	if exitCode != 1 {
 		t.Errorf("exit code = %d, want 1", exitCode)
 	}
-	if !strings.Contains(stderr, "gw: error:") {
-		t.Errorf("expected 'gw: error:' format in stderr, got: %q", stderr)
+	if !strings.Contains(stderr, "identifier required") {
+		t.Errorf("expected 'identifier required' in stderr, got: %q", stderr)
 	}
 }

@@ -14,31 +14,22 @@ import (
 )
 
 // Remove implements the "gw rm" command.
-func Remove(args []string) int {
-	identifier, force, err := parseRemoveArgs(args)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "gw: error: %v\n", err)
-		return 1
-	}
-
+func Remove(identifier string, force bool) error {
 	// 1. Detect repo root
 	cwd, err := os.Getwd()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "gw: error: %v\n", err)
-		return 1
+		return err
 	}
 
 	repoRoot, err := git.RepoRoot(cwd)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "gw: error: %v\n", err)
-		return 1
+		return err
 	}
 
 	// Load config and resolve base directory
 	cfg, err := config.Load(repoRoot)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "gw: error: %v\n", err)
-		return 1
+		return err
 	}
 
 	repoName := git.RepoName(repoRoot)
@@ -46,22 +37,19 @@ func Remove(args []string) int {
 
 	baseDir, err = filepath.Abs(baseDir)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "gw: error: %v\n", err)
-		return 1
+		return err
 	}
 
 	// Resolve identifier to worktree path and branch
 	wtPath, branch, err := resolve.Resolve(repoRoot, baseDir, identifier)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "gw: error: %v\n", err)
-		return 1
+		return err
 	}
 
 	// 2. Run pre-remove hook (in worktree directory)
 	if err := hook.Run(repoRoot, "pre-remove", wtPath, wtPath, branch, os.Stderr); err != nil {
 		if !force {
-			fmt.Fprintf(os.Stderr, "gw: error: pre-remove hook failed: %v\n", err)
-			return 1
+			return fmt.Errorf("pre-remove hook failed: %w", err)
 		}
 		fmt.Fprintf(os.Stderr, "gw: warning: pre-remove hook failed: %v\n", err)
 	}
@@ -79,7 +67,7 @@ func Remove(args []string) int {
 	gitCmd.Stderr = os.Stderr
 
 	if err := gitCmd.Run(); err != nil {
-		return 1
+		return fmt.Errorf("git worktree remove failed: %w", err)
 	}
 
 	// 4. Run post-remove hook (at repo root)
@@ -87,28 +75,5 @@ func Remove(args []string) int {
 		fmt.Fprintf(os.Stderr, "gw: warning: post-remove hook failed: %v\n", err)
 	}
 
-	return 0
-}
-
-func parseRemoveArgs(args []string) (identifier string, force bool, err error) {
-	if len(args) == 0 {
-		return "", false, fmt.Errorf("identifier required")
-	}
-
-	for _, arg := range args {
-		switch {
-		case arg == "--force":
-			force = true
-		case identifier == "":
-			identifier = arg
-		default:
-			return "", false, fmt.Errorf("unknown argument: %s", arg)
-		}
-	}
-
-	if identifier == "" {
-		return "", false, fmt.Errorf("identifier required")
-	}
-
-	return identifier, force, nil
+	return nil
 }

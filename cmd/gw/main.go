@@ -1,51 +1,94 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/gin0606/gw/internal/cmd"
+	"github.com/urfave/cli/v3"
 )
 
 var version = "0.1.0"
 
 func main() {
-	os.Exit(run(os.Args[1:]))
-}
-
-func run(args []string) int {
-	if len(args) == 0 {
-		fmt.Fprint(os.Stderr, usage())
-		return 1
+	root := &cli.Command{
+		Name:    "gw",
+		Usage:   "A thin wrapper around git worktree",
+		Version: version,
+		Commands: []*cli.Command{
+			cmdInit(),
+			cmdAdd(),
+			cmdRemove(),
+			cmdList(),
+		},
 	}
-
-	switch args[0] {
-	case "version":
-		cmd.Version(version)
-		return 0
-	case "init":
-		return cmd.Init(args[1:])
-	case "add":
-		return cmd.Add(args[1:])
-	case "go":
-		return cmd.Go(args[1:])
-	case "rm":
-		return cmd.Remove(args[1:])
-	default:
-		fmt.Fprintf(os.Stderr, "gw: error: unknown command '%s'\n", args[0])
-		fmt.Fprint(os.Stderr, usage())
-		return 1
+	if err := root.Run(context.Background(), os.Args); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
 	}
 }
 
-func usage() string {
-	return `usage: gw <command> [<args>]
+func cmdInit() *cli.Command {
+	return &cli.Command{
+		Name:  "init",
+		Usage: "Initialize .gw/ configuration",
+		Action: func(ctx context.Context, c *cli.Command) error {
+			if c.Args().Len() > 0 {
+				return fmt.Errorf("unexpected argument: %s", c.Args().First())
+			}
+			return cmd.Init()
+		},
+	}
+}
 
-Commands:
-   init      Initialize .gw/ configuration
-   add       Create a new worktree
-   rm        Remove a worktree
-   go        Print worktree path
-   version   Print version information
-`
+func cmdAdd() *cli.Command {
+	return &cli.Command{
+		Name:  "add",
+		Usage: "Create a new worktree",
+		Flags: []cli.Flag{
+			&cli.StringFlag{Name: "from", Usage: "Create new branch from specified ref"},
+		},
+		Action: func(ctx context.Context, c *cli.Command) error {
+			if c.Args().Len() < 1 {
+				return fmt.Errorf("branch name required")
+			}
+			if c.Args().Len() > 1 {
+				return fmt.Errorf("unexpected argument: %s", c.Args().Get(1))
+			}
+			return cmd.Add(c.Args().First(), c.String("from"))
+		},
+	}
+}
+
+func cmdRemove() *cli.Command {
+	return &cli.Command{
+		Name:  "rm",
+		Usage: "Remove a worktree",
+		Flags: []cli.Flag{
+			&cli.BoolFlag{Name: "force", Usage: "Force removal even if worktree is dirty or hook fails"},
+		},
+		Action: func(ctx context.Context, c *cli.Command) error {
+			if c.Args().Len() < 1 {
+				return fmt.Errorf("identifier required")
+			}
+			if c.Args().Len() > 1 {
+				return fmt.Errorf("unexpected argument: %s", c.Args().Get(1))
+			}
+			return cmd.Remove(c.Args().First(), c.Bool("force"))
+		},
+	}
+}
+
+func cmdList() *cli.Command {
+	return &cli.Command{
+		Name:  "list",
+		Usage: "List all worktrees",
+		Action: func(ctx context.Context, c *cli.Command) error {
+			if c.Args().Len() > 0 {
+				return fmt.Errorf("unexpected argument: %s", c.Args().First())
+			}
+			return cmd.List()
+		},
+	}
 }
