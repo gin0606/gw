@@ -33,9 +33,10 @@ CI runs `go vet ./...` and `go test ./...`.
 
 ```
 cmd/gw/main.go          Entry point. Parses args and dispatches to subcommands
+cmd/gw/completion.go     Shell completion logic (custom completers for add, rm)
 internal/
   cmd/                   Subcommand implementations (init, add, rm, list)
-  git/                   Git command wrappers (RepoRoot, BranchExists, ListWorktrees, etc.)
+  git/                   Git command wrappers (RepoRoot, BranchExists, ListWorktrees, ListLocalBranches, ListRefs, etc.)
   config/                Loads .gw/config (TOML)
   hook/                  Hook execution engine for .gw/hooks/
   pathutil/              Branch name sanitization and worktree path calculation

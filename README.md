@@ -23,6 +23,27 @@ go install github.com/gin0606/gw/cmd/gw@latest
 - **`gw rm <path> [--force]`** — Remove a worktree by its path (absolute or relative). Use `--force` to remove even with uncommitted changes.
 - **`gw list`** — Print the absolute path of each worktree, one per line.
 
+## Shell Completion
+
+Generate completion scripts with `gw completion`:
+
+```sh
+# Bash
+gw completion bash > /etc/bash_completion.d/gw
+
+# Zsh
+gw completion zsh > "${fpath[1]}/_gw"
+
+# Fish
+gw completion fish > ~/.config/fish/completions/gw.fish
+```
+
+Tab completion is available for subcommands:
+
+- `gw add <TAB>` — local branch names
+- `gw add --from <TAB>` — all refs (branches, remotes, tags)
+- `gw rm <TAB>` — worktree paths (excluding the main worktree)
+
 ## Recipes
 
 Commands are designed to compose with standard shell tools.

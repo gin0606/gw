@@ -23,6 +23,27 @@ go install github.com/gin0606/gw/cmd/gw@latest
 - **`gw rm <path> [--force]`** — worktree をパス指定（絶対・相対）で削除する。`--force` で未コミット変更があっても強制削除。
 - **`gw list`** — 各 worktree の絶対パスを1行ずつ出力する。
 
+## シェル補完
+
+`gw completion` で補完スクリプトを生成できます。
+
+```sh
+# Bash
+gw completion bash > /etc/bash_completion.d/gw
+
+# Zsh
+gw completion zsh > "${fpath[1]}/_gw"
+
+# Fish
+gw completion fish > ~/.config/fish/completions/gw.fish
+```
+
+サブコマンドでタブ補完が利用できます。
+
+- `gw add <TAB>` — ローカルブランチ名
+- `gw add --from <TAB>` — 全 ref（ブランチ、リモート、タグ）
+- `gw rm <TAB>` — worktree パス（メイン worktree を除く）
+
 ## レシピ
 
 各コマンドはシェルのパイプと組み合わせて使うことを想定しています。
