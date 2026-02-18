@@ -81,7 +81,7 @@ func TestVersion(t *testing.T) {
 	if exitCode != 0 {
 		t.Errorf("exit code = %d, want 0", exitCode)
 	}
-	if !strings.Contains(stdout, "gw version 0.1.0") {
+	if !strings.Contains(stdout, "gw version") {
 		t.Errorf("expected version output, got: %q", stdout)
 	}
 }

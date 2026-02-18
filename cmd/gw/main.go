@@ -4,12 +4,19 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime/debug"
 
 	"github.com/gin0606/gw/internal/cmd"
 	"github.com/urfave/cli/v3"
 )
 
-var version = "0.1.0"
+var version = "dev"
+
+func init() {
+	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
+		version = info.Main.Version
+	}
+}
 
 func main() {
 	root := &cli.Command{
