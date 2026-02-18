@@ -31,8 +31,9 @@ func main() {
 
 func cmdInit() *cli.Command {
 	return &cli.Command{
-		Name:  "init",
-		Usage: "Initialize .gw/ configuration",
+		Name:      "init",
+		Usage:     "Initialize .gw/ configuration",
+		UsageText: "gw init",
 		Action: func(ctx context.Context, c *cli.Command) error {
 			if c.Args().Len() > 0 {
 				return fmt.Errorf("unexpected argument: %s", c.Args().First())
@@ -44,8 +45,9 @@ func cmdInit() *cli.Command {
 
 func cmdAdd() *cli.Command {
 	return &cli.Command{
-		Name:  "add",
-		Usage: "Create a new worktree",
+		Name:      "add",
+		Usage:     "Create a new worktree",
+		UsageText: "gw add [--from <ref>] <branch>",
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "from", Usage: "Create new branch from specified ref"},
 		},
@@ -63,8 +65,9 @@ func cmdAdd() *cli.Command {
 
 func cmdRemove() *cli.Command {
 	return &cli.Command{
-		Name:  "rm",
-		Usage: "Remove a worktree",
+		Name:      "rm",
+		Usage:     "Remove a worktree",
+		UsageText: "gw rm [--force] <path>",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{Name: "force", Usage: "Force removal even if worktree is dirty or hook fails"},
 		},
@@ -82,8 +85,9 @@ func cmdRemove() *cli.Command {
 
 func cmdList() *cli.Command {
 	return &cli.Command{
-		Name:  "list",
-		Usage: "List all worktrees",
+		Name:      "list",
+		Usage:     "List all worktrees",
+		UsageText: "gw list",
 		Action: func(ctx context.Context, c *cli.Command) error {
 			if c.Args().Len() > 0 {
 				return fmt.Errorf("unexpected argument: %s", c.Args().First())
