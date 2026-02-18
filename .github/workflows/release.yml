@@ -20,8 +20,17 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: gin0606
+          repositories: homebrew-tap
+
       - uses: goreleaser/goreleaser-action@v6
         with:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}

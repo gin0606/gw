@@ -16,5 +16,13 @@ builds:
 archives:
   - format: tar.gz
 
+brews:
+  - repository:
+      owner: gin0606
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: https://github.com/gin0606/gw
+    description: "Git worktree wrapper with lifecycle hooks"
+
 changelog:
   use: github

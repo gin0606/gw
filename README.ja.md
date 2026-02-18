@@ -13,6 +13,12 @@ git worktree のラッパー CLI。ライフサイクルフックで worktree �
 ## インストール
 
 ```sh
+brew install gin0606/tap/gw
+```
+
+または `go install`:
+
+```sh
 go install github.com/gin0606/gw/cmd/gw@latest
 ```
 

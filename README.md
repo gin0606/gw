@@ -13,6 +13,12 @@ A git worktree wrapper with lifecycle hooks.
 ## Installation
 
 ```sh
+brew install gin0606/tap/gw
+```
+
+Or with `go install`:
+
+```sh
 go install github.com/gin0606/gw/cmd/gw@latest
 ```
 
