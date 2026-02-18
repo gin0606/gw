@@ -25,8 +25,7 @@ Commands:
    init      Initialize .gw/ configuration
    add       Create a new worktree
    rm        Remove a worktree
-   go        Print worktree path
-   version   Print version information
+   list      List all worktrees
 ```
 
 ### `gw init`
@@ -70,22 +69,6 @@ gw rm feature/user-auth
 gw rm feature/user-auth --force
 ```
 
-### `gw go <identifier>`
-
-Print the path of an existing worktree. Designed for shell integration.
-
-```sh
-# cd into a worktree
-cd "$(gw go feature/user-auth)"
-```
-
-### `gw version`
-
-```sh
-gw version
-# gw version 0.1.0
-```
-
 ## Configuration
 
 Place a TOML configuration file at `.gw/config` in your repository root.
@@ -97,7 +80,7 @@ worktrees_dir = "../my-worktrees"
 
 | Key | Description | Default |
 |---|---|---|
-| `worktrees_dir` | Base directory for worktrees | `../<repo-name>-worktrees/` |
+| `worktrees_dir` | Base directory for worktrees | Adjacent to the repository |
 
 ## Hooks
 
