@@ -14,6 +14,7 @@
 ```sh
 goimports -l .        # CI runs this (should produce no output)
 go vet ./...          # CI runs this
+staticcheck ./...     # CI runs this
 go test ./...         # CI runs this
 go build ./cmd/gw/
 ```
