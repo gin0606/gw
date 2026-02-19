@@ -1,33 +1,21 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
-`gw` is a git worktree wrapper with lifecycle hooks. It runs user scripts before and after worktree creation/removal, and automatically calculates worktree paths from branch names. Go 1.25+, sole external dependency is `github.com/BurntSushi/toml`.
+`gw` is a git worktree wrapper with lifecycle hooks. It runs user scripts before and after worktree creation/removal, and automatically calculates worktree paths from branch names. Go 1.25+, external dependencies are `github.com/BurntSushi/toml` and `github.com/urfave/cli/v3`.
 
-Design philosophy: features achievable through hooks are not built into the tool itself.
+## Design Principles
 
-## Common Commands
+- Features achievable through hooks are NOT built into the tool itself. Always prefer hooks over new built-in functionality.
+- Do not reimplement git behavior. Delegate to git commands via the `internal/git` package.
+
+## Verification
 
 ```sh
-# Run all tests
-go test ./...
-
-# Run tests for a single package
-go test ./internal/pathutil/
-
-# Run a single test
-go test ./internal/pathutil/ -run TestSanitize
-
-# Vet
-go vet ./...
-
-# Build
+go vet ./...          # CI runs this
+go test ./...         # CI runs this
 go build ./cmd/gw/
 ```
-
-CI runs `go vet ./...` and `go test ./...`.
 
 ## Architecture
 
@@ -42,6 +30,10 @@ internal/
   pathutil/              Branch name sanitization and worktree path calculation
   testutil/              Test helper for creating temporary git repositories
 ```
+
+### Config & Hooks
+
+Config (`.gw/config`) and hooks (`.gw/hooks/`) are documented in README.md. Refer to it for available keys, hook names, and environment variables.
 
 ### Subcommand Common Flow
 
