@@ -13,7 +13,7 @@ import (
 )
 
 // Add implements the "gw add" command.
-func Add(branch, from string) error {
+func Add(branch, from string, noHooks bool) error {
 	// 1. Detect repo root
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -91,8 +91,10 @@ func Add(branch, from string) error {
 	}
 
 	// 4. Run pre-add hook (at repo root)
-	if err := hook.Run(repoRoot, "pre-add", repoRoot, wtPath, branch, os.Stderr); err != nil {
-		return fmt.Errorf("pre-add hook failed: %w", err)
+	if !noHooks {
+		if err := hook.Run(repoRoot, "pre-add", repoRoot, wtPath, branch, os.Stderr); err != nil {
+			return fmt.Errorf("pre-add hook failed: %w", err)
+		}
 	}
 
 	// 5. Create worktree
@@ -106,8 +108,10 @@ func Add(branch, from string) error {
 	}
 
 	// 6. Run post-add hook (in worktree directory)
-	if err := hook.Run(repoRoot, "post-add", wtPath, wtPath, branch, os.Stderr); err != nil {
-		fmt.Fprintf(os.Stderr, "gw: warning: post-add hook failed: %v\n", err)
+	if !noHooks {
+		if err := hook.Run(repoRoot, "post-add", wtPath, wtPath, branch, os.Stderr); err != nil {
+			fmt.Fprintf(os.Stderr, "gw: warning: post-add hook failed: %v\n", err)
+		}
 	}
 
 	// 7. Output path to stdout

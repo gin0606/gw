@@ -62,6 +62,7 @@ func cmdAdd() *cli.Command {
 		ShellComplete: completeAdd,
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "from", Usage: "Create new branch from specified ref"},
+			&cli.BoolFlag{Name: "no-hooks", Usage: "Skip pre-add and post-add hooks"},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			if c.Args().Len() < 1 {
@@ -70,7 +71,7 @@ func cmdAdd() *cli.Command {
 			if c.Args().Len() > 1 {
 				return fmt.Errorf("unexpected argument: %s", c.Args().Get(1))
 			}
-			return cmd.Add(c.Args().First(), c.String("from"))
+			return cmd.Add(c.Args().First(), c.String("from"), c.Bool("no-hooks"))
 		},
 	}
 }
@@ -83,6 +84,7 @@ func cmdRemove() *cli.Command {
 		ShellComplete: completeRemove,
 		Flags: []cli.Flag{
 			&cli.BoolFlag{Name: "force", Usage: "Force removal even if worktree is dirty or hook fails"},
+			&cli.BoolFlag{Name: "no-hooks", Usage: "Skip pre-remove and post-remove hooks"},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			if c.Args().Len() < 1 {
@@ -91,7 +93,7 @@ func cmdRemove() *cli.Command {
 			if c.Args().Len() > 1 {
 				return fmt.Errorf("unexpected argument: %s", c.Args().Get(1))
 			}
-			return cmd.Remove(c.Args().First(), c.Bool("force"))
+			return cmd.Remove(c.Args().First(), c.Bool("force"), c.Bool("no-hooks"))
 		},
 	}
 }

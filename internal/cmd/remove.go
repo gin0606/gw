@@ -11,7 +11,7 @@ import (
 )
 
 // Remove implements the "gw rm" command.
-func Remove(path string, force bool) error {
+func Remove(path string, force, noHooks bool) error {
 	// 1. Normalize path to absolute and resolve symlinks
 	wtPath, err := filepath.Abs(path)
 	if err != nil {
@@ -54,11 +54,13 @@ func Remove(path string, force bool) error {
 	}
 
 	// Run pre-remove hook (in worktree directory)
-	if err := hook.Run(repoRoot, "pre-remove", wtPath, wtPath, branch, os.Stderr); err != nil {
-		if !force {
-			return fmt.Errorf("pre-remove hook failed: %w", err)
+	if !noHooks {
+		if err := hook.Run(repoRoot, "pre-remove", wtPath, wtPath, branch, os.Stderr); err != nil {
+			if !force {
+				return fmt.Errorf("pre-remove hook failed: %w", err)
+			}
+			fmt.Fprintf(os.Stderr, "gw: warning: pre-remove hook failed: %v\n", err)
 		}
-		fmt.Fprintf(os.Stderr, "gw: warning: pre-remove hook failed: %v\n", err)
 	}
 
 	// 3. Remove worktree
@@ -78,8 +80,10 @@ func Remove(path string, force bool) error {
 	}
 
 	// 4. Run post-remove hook (at repo root)
-	if err := hook.Run(repoRoot, "post-remove", repoRoot, wtPath, branch, os.Stderr); err != nil {
-		fmt.Fprintf(os.Stderr, "gw: warning: post-remove hook failed: %v\n", err)
+	if !noHooks {
+		if err := hook.Run(repoRoot, "post-remove", repoRoot, wtPath, branch, os.Stderr); err != nil {
+			fmt.Fprintf(os.Stderr, "gw: warning: post-remove hook failed: %v\n", err)
+		}
 	}
 
 	return nil

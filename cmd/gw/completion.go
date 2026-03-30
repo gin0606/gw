@@ -38,7 +38,7 @@ func completeAdd(ctx context.Context, cmd *cli.Command) {
 		return
 	}
 
-	if strings.HasPrefix(prev, "-") {
+	if prev != "--no-hooks" && strings.HasPrefix(prev, "-") {
 		cli.DefaultCompleteWithFlags(ctx, cmd)
 		return
 	}
@@ -74,7 +74,7 @@ func completeRemove(ctx context.Context, cmd *cli.Command) {
 	}
 
 	// --force is a bool flag; the next argument is a positional arg, not a flag value
-	if prev != "--force" && strings.HasPrefix(prev, "-") {
+	if prev != "--force" && prev != "--no-hooks" && strings.HasPrefix(prev, "-") {
 		cli.DefaultCompleteWithFlags(ctx, cmd)
 		return
 	}
