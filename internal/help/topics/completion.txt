@@ -1,0 +1,30 @@
+gw provides shell completion scripts and dynamic completion candidates
+for subcommand arguments.
+
+GENERATE COMPLETION SCRIPTS
+
+  Bash:
+    gw completion bash > /etc/bash_completion.d/gw
+
+  Zsh:
+    gw completion zsh > "${fpath[1]}/_gw"
+
+  Fish:
+    gw completion fish > ~/.config/fish/completions/gw.fish
+
+  PowerShell:
+    gw completion pwsh | Out-String | Invoke-Expression
+
+DYNAMIC COMPLETION
+
+  gw add <TAB>
+    Local branch names.
+
+  gw add --from <TAB>
+    All refs (local branches, remote-tracking branches, tags).
+
+  gw rm <TAB>
+    Worktree paths, excluding the main worktree.
+
+  Completion produces no candidates when run outside a git repository, or
+  when a positional argument has already been supplied.

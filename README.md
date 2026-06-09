@@ -22,6 +22,23 @@ Or with `go install`:
 go install github.com/gin0606/gw/cmd/gw@latest
 ```
 
+## Reference
+
+The CLI is the source of truth. The sections below in this README cover the same identifiers (hook names, env vars, config keys) for convenience and search; the authoritative documentation lives in `gw help`.
+
+```sh
+gw help                  # Root overview, including the list of topics.
+gw help <command>        # Same as `gw <command> --help`.
+gw help hooks            # Hook names, env vars, working dirs, failure modes.
+gw help config           # .gw/config keys and defaults.
+gw help path             # How worktree paths are calculated.
+gw help completion       # Shell completion and dynamic candidates.
+gw help recipes          # Shell snippets that compose with gw output.
+gw help all              # Everything above, in one stream.
+```
+
+Coding agents can read the entire reference with `gw help all`.
+
 ## Commands
 
 - **`gw init`** — Initialize `.gw/` directory with default configuration and hook templates.

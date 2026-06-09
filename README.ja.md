@@ -22,6 +22,23 @@ brew install gin0606/tap/gw
 go install github.com/gin0606/gw/cmd/gw@latest
 ```
 
+## リファレンス
+
+仕様の SSoT は CLI 側 (`gw help`) です。README 内の以下のセクションは同じ識別子 (hook 名・環境変数・config キー) を検索しやすいように残してありますが、権威ある記述は CLI 側を参照してください。
+
+```sh
+gw help                  # ルート概要とトピック一覧。
+gw help <command>        # `gw <command> --help` と同じ出力。
+gw help hooks            # フック名、環境変数、working dir、失敗時挙動。
+gw help config           # .gw/config のキーとデフォルト。
+gw help path             # worktree パスの算出規則。
+gw help completion       # シェル補完と動的補完候補。
+gw help recipes          # gw の出力と組み合わせるシェルスニペット。
+gw help all              # 上記すべてを一度に出力。
+```
+
+コーディングエージェントは `gw help all` で全リファレンスを取得できます。
+
 ## コマンド
 
 - **`gw init`** — `.gw/` ディレクトリをデフォルト設定とフックテンプレートで初期化する。

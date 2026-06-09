@@ -1,8 +1,10 @@
 package hook
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,11 +18,11 @@ func Run(repoRoot, hookName, cwd, worktreePath, branch string, output io.Writer)
 	hookPath := filepath.Join(repoRoot, ".gw", "hooks", hookName)
 
 	info, err := os.Stat(hookPath)
-	if os.IsNotExist(err) {
+	if errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}
 	if err != nil {
-		return err
+		return fmt.Errorf("stat hook %q: %w", hookName, err)
 	}
 
 	if info.Mode()&0111 == 0 {
@@ -32,9 +34,9 @@ func Run(repoRoot, hookName, cwd, worktreePath, branch string, output io.Writer)
 	cmd.Stdout = output
 	cmd.Stderr = output
 	cmd.Env = append(os.Environ(),
-		"GW_REPO_ROOT="+repoRoot,
-		"GW_WORKTREE_PATH="+worktreePath,
-		"GW_BRANCH="+branch,
+		EnvRepoRoot+"="+repoRoot,
+		EnvWorktreePath+"="+worktreePath,
+		EnvBranch+"="+branch,
 	)
 
 	return cmd.Run()

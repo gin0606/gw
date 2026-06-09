@@ -119,6 +119,55 @@ func TestRun_StdoutToOutput(t *testing.T) {
 	}
 }
 
+// TestRun_AllSpecEnvVarsArePassed asserts that the set of GW_* environment
+// variables the hook actually sees matches hook.EnvVars(). This catches drift
+// in either direction: if Run starts exporting a new GW_FOO without listing
+// it in EnvVars (so docs and init templates omit it), or if EnvVars adds an
+// entry that Run never exports.
+func TestRun_AllSpecEnvVarsArePassed(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	outFile := filepath.Join(t.TempDir(), "gwenv.txt")
+
+	repo.WriteHook("pre-add", "#!/bin/sh\nenv | grep '^GW_' | sort > "+outFile+"\n")
+
+	err := hook.Run(repo.Root, hook.PreAdd, repo.Root, "/some/path", "main", &bytes.Buffer{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data, err := os.ReadFile(outFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]bool{}
+	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
+		if line == "" {
+			continue
+		}
+		eq := strings.IndexByte(line, '=')
+		if eq < 0 {
+			t.Errorf("malformed env line: %q", line)
+			continue
+		}
+		seen[line[:eq]] = true
+	}
+
+	want := map[string]bool{}
+	for _, n := range hook.EnvVars() {
+		want[n] = true
+	}
+	for n := range want {
+		if !seen[n] {
+			t.Errorf("EnvVars lists %q but Run did not export it", n)
+		}
+	}
+	for n := range seen {
+		if !want[n] {
+			t.Errorf("Run exported %q but EnvVars does not list it (docs/init template will be stale)", n)
+		}
+	}
+}
+
 func TestRun_StderrToOutput(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 	repo.WriteHook("pre-add", "#!/bin/sh\necho 'hook stderr' >&2\n")

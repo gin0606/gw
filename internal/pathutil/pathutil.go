@@ -8,10 +8,10 @@ import (
 )
 
 // Sanitize converts a branch name to a filesystem-safe directory name.
-// Rules: replace "/" with "-", then trim leading/trailing hyphens.
+// Rules: replace "/" with separatorReplacement, then trim leading/trailing replacement chars.
 func Sanitize(branch string) (string, error) {
-	s := strings.ReplaceAll(branch, "/", "-")
-	s = strings.Trim(s, "-")
+	s := strings.ReplaceAll(branch, "/", separatorReplacement)
+	s = strings.Trim(s, separatorReplacement)
 
 	if s == "" || s == "." || s == ".." {
 		return "", fmt.Errorf("invalid branch name %q: sanitized result is %q", branch, s)
@@ -23,7 +23,7 @@ func Sanitize(branch string) (string, error) {
 // BaseDir resolves the worktree base directory from config or default.
 func BaseDir(repoRoot, repoName, worktreesDir string) string {
 	if worktreesDir == "" {
-		return filepath.Join(repoRoot, "..", repoName+"-worktrees")
+		return filepath.Join(repoRoot, "..", repoName+DefaultBaseDirSuffix)
 	}
 	if filepath.IsAbs(worktreesDir) {
 		return worktreesDir

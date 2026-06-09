@@ -55,7 +55,7 @@ func Remove(path string, force, noHooks bool) error {
 
 	// Run pre-remove hook (in worktree directory)
 	if !noHooks {
-		if err := hook.Run(repoRoot, "pre-remove", wtPath, wtPath, branch, os.Stderr); err != nil {
+		if err := hook.Run(repoRoot, hook.PreRemove, wtPath, wtPath, branch, os.Stderr); err != nil {
 			if !force {
 				return fmt.Errorf("pre-remove hook failed: %w", err)
 			}
@@ -81,7 +81,7 @@ func Remove(path string, force, noHooks bool) error {
 
 	// 4. Run post-remove hook (at repo root)
 	if !noHooks {
-		if err := hook.Run(repoRoot, "post-remove", repoRoot, wtPath, branch, os.Stderr); err != nil {
+		if err := hook.Run(repoRoot, hook.PostRemove, repoRoot, wtPath, branch, os.Stderr); err != nil {
 			fmt.Fprintf(os.Stderr, "gw: warning: post-remove hook failed: %v\n", err)
 		}
 	}

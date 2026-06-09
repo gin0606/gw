@@ -1,0 +1,11 @@
+gw commands print machine-readable output to stdout, so they compose with
+standard shell tools.
+
+  # Create a worktree and cd into it.
+  cd "$(gw add feature/user-auth)"
+
+  # Interactively select a worktree with fzf.
+  cd "$(gw list | fzf)"
+
+  # Remove a worktree selected with fzf.
+  gw rm "$(gw list | fzf)"

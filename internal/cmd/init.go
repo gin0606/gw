@@ -1,11 +1,17 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/gin0606/gw/internal/config"
 	"github.com/gin0606/gw/internal/git"
+	"github.com/gin0606/gw/internal/hook"
+	"github.com/gin0606/gw/internal/pathutil"
 )
 
 // Init implements the "gw init" command.
@@ -23,95 +29,93 @@ func Init() error {
 	gwDir := filepath.Join(repoRoot, ".gw")
 	if _, err := os.Stat(gwDir); err == nil {
 		return fmt.Errorf(".gw/ already exists")
-	} else if !os.IsNotExist(err) {
+	} else if !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
 
 	repoName := git.RepoName(repoRoot)
-	configContent := fmt.Sprintf("# See https://github.com/gin0606/gw\nworktrees_dir = \"../%s-worktrees\"\n", repoName)
+	configContent := renderConfigTemplate(repoName)
 
 	hooksDir := filepath.Join(gwDir, "hooks")
 	if err := os.MkdirAll(hooksDir, 0755); err != nil {
-		return err
+		return cleanupAndReturn(gwDir, fmt.Errorf("create .gw/hooks: %w", err))
 	}
 
 	if err := os.WriteFile(filepath.Join(gwDir, "config"), []byte(configContent), 0644); err != nil {
-		os.RemoveAll(gwDir)
-		return err
+		return cleanupAndReturn(gwDir, fmt.Errorf("write .gw/config: %w", err))
 	}
 
-	hooks := []struct {
-		name    string
-		content string
-	}{
-		{"pre-add", `#!/bin/sh
-# This hook is called before a worktree is created.
-# Working directory: repository root
-#
-# Available environment variables:
-#   GW_REPO_ROOT       - Main repository root
-#   GW_WORKTREE_PATH   - Worktree path (to be created)
-#   GW_BRANCH          - Branch name
-#
-# Exit non-zero to abort worktree creation.
-#
-# Example: Fetch latest remote so the new worktree starts from up-to-date origin/main
-# git fetch origin
-`},
-		{"post-add", `#!/bin/sh
-# This hook is called after a worktree is created.
-# Working directory: the new worktree
-#
-# Available environment variables:
-#   GW_REPO_ROOT       - Main repository root
-#   GW_WORKTREE_PATH   - Worktree path
-#   GW_BRANCH          - Branch name
-#
-# Example: Install dependencies and copy files not tracked by git
-# npm install
-# cp "$GW_REPO_ROOT/.env" "$GW_WORKTREE_PATH/.env"
-`},
-		{"pre-remove", `#!/bin/sh
-# This hook is called before a worktree is removed.
-# Working directory: the worktree being removed
-#
-# Available environment variables:
-#   GW_REPO_ROOT       - Main repository root
-#   GW_WORKTREE_PATH   - Worktree path (to be removed)
-#   GW_BRANCH          - Branch name
-#
-# Exit non-zero to abort worktree removal (skipped with --force).
-#
-# Example: Stop development servers before removing the worktree
-# docker compose down
-`},
-		{"post-remove", `#!/bin/sh
-# This hook is called after a worktree is removed.
-# Working directory: repository root
-#
-# Available environment variables:
-#   GW_REPO_ROOT       - Main repository root
-#   GW_WORKTREE_PATH   - Worktree path (already removed)
-#   GW_BRANCH          - Branch name
-#
-# Example: Fetch and delete the branch if it has been merged
-# git fetch --prune origin
-# if ! git branch --list "$GW_BRANCH" | grep -q .; then
-#   exit 0
-# fi
-# if git merge-base --is-ancestor "$GW_BRANCH" origin/main; then
-#   git branch -D "$GW_BRANCH"
-# fi
-`},
-	}
-
-	for _, h := range hooks {
-		if err := os.WriteFile(filepath.Join(hooksDir, h.name), []byte(h.content), 0755); err != nil {
-			os.RemoveAll(gwDir)
-			return err
+	for _, name := range hook.Names() {
+		content := renderHookTemplate(name)
+		if err := os.WriteFile(filepath.Join(hooksDir, name), []byte(content), 0755); err != nil {
+			return cleanupAndReturn(gwDir, fmt.Errorf("write .gw/hooks/%s: %w", name, err))
 		}
 	}
 
 	fmt.Fprintf(os.Stderr, "Initialized .gw/ in %s\n", repoRoot)
+	return nil
+}
+
+// cleanupAndReturn returns original after removing gwDir. If the cleanup
+// itself fails, the cleanup error is joined to original so the user can tell
+// why a follow-up `gw init` reports ".gw/ already exists" despite the
+// previous error message. Passing a nil original would silently return nil
+// on cleanup success and lose the original signal, so the function panics
+// to make the misuse loud at the call site.
+func cleanupAndReturn(gwDir string, original error) error {
+	if original == nil {
+		panic("cleanupAndReturn: original must be non-nil")
+	}
+	if rmErr := os.RemoveAll(gwDir); rmErr != nil {
+		return errors.Join(original, fmt.Errorf("clean up partial %s: %w", gwDir, rmErr))
+	}
+	return original
+}
+
+func renderConfigTemplate(repoName string) string {
+	return fmt.Sprintf("# See: gw help config\n%s = \"../%s%s\"\n", config.KeyWorktreesDir, repoName, pathutil.DefaultBaseDirSuffix)
+}
+
+func renderHookTemplate(name string) string {
+	var b strings.Builder
+	b.WriteString("#!/bin/sh\n")
+	fmt.Fprintf(&b, "# gw hook: %s\n", name)
+	b.WriteString("# Full hook semantics: gw help hooks\n")
+	b.WriteString("#\n")
+	b.WriteString("# Available environment variables:\n")
+	for _, env := range hook.EnvVars() {
+		fmt.Fprintf(&b, "#   %s\n", env)
+	}
+	b.WriteString("#\n")
+	b.WriteString("# Example:\n")
+	for _, line := range exampleLines(name) {
+		fmt.Fprintf(&b, "# %s\n", line)
+	}
+	return b.String()
+}
+
+func exampleLines(name string) []string {
+	switch name {
+	case hook.PreAdd:
+		return []string{
+			"git fetch origin",
+		}
+	case hook.PostAdd:
+		return []string{
+			"npm install",
+			fmt.Sprintf(`cp "$%s/.env" "$%s/.env"`, hook.EnvRepoRoot, hook.EnvWorktreePath),
+		}
+	case hook.PreRemove:
+		return []string{
+			"docker compose down",
+		}
+	case hook.PostRemove:
+		return []string{
+			"git fetch --prune origin",
+			fmt.Sprintf(`if git merge-base --is-ancestor "$%s" origin/main 2>/dev/null; then`, hook.EnvBranch),
+			fmt.Sprintf(`  git branch -D "$%s"`, hook.EnvBranch),
+			"fi",
+		}
+	}
 	return nil
 }

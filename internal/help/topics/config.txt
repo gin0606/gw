@@ -1,0 +1,16 @@
+Place a TOML configuration file at .gw/config in the repository root.
+If the file is absent, defaults are used.
+
+KEYS
+
+  worktrees_dir
+    Base directory for new worktrees.
+    Absolute path, or relative to the repository root.
+    Default: a sibling directory of the repository named "<repo>-worktrees"
+    (i.e. ../<repo>-worktrees).
+
+EXAMPLE
+
+  .gw/config:
+
+    worktrees_dir = "../my-worktrees"

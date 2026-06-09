@@ -1,0 +1,37 @@
+gw calculates each worktree's path from the branch name and a base
+directory. The path is printed to stdout by `gw add`.
+
+WORKTREE PATH
+
+  worktree path = <base directory>/<sanitized branch name>
+
+BASE DIRECTORY
+
+  Resolved in this order, then made absolute:
+
+    1. The `worktrees_dir` key in .gw/config, if set.
+       - Absolute paths are used as-is.
+       - Relative paths are resolved against the repository root.
+    2. Default: a sibling of the repository named "<repo>-worktrees".
+
+  `gw add` always emits the resolved absolute path to stdout regardless of
+  how the base directory was configured.
+
+BRANCH NAME SANITIZATION
+
+  Branch names are converted to directory names by:
+
+    1. Replacing every "/" with "-".
+    2. Trimming leading and trailing "-".
+
+  Examples:
+    feature/user-auth   -> feature-user-auth
+    bugfix/issue-123    -> bugfix-issue-123
+    /weird/             -> weird
+
+  A branch name that sanitizes to "", ".", or ".." is rejected.
+
+COLLISION
+
+  If the computed worktree path already exists on disk, `gw add` aborts
+  before any git operation or hook runs.

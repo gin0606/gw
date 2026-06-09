@@ -1,0 +1,84 @@
+Lifecycle hooks let you run scripts before and after worktree operations.
+Place executable files in .gw/hooks/ at the repository root.
+
+Design: features achievable through hooks are not built into gw itself.
+Use hooks for setup, teardown, validation, file sync, and integrations.
+
+HOOKS
+
+  pre-add
+    Trigger: Before worktree creation.
+    Working directory: repository root.
+    GW_WORKTREE_PATH does not yet exist on disk.
+    On failure: gw aborts; the worktree is not created.
+
+  post-add
+    Trigger: After worktree creation.
+    Working directory: the new worktree.
+    GW_WORKTREE_PATH exists.
+    On failure: gw prints a warning to stderr; the operation still succeeds.
+
+  pre-remove
+    Trigger: Before worktree removal.
+    Working directory: the worktree being removed.
+    GW_WORKTREE_PATH exists.
+    On failure: gw aborts by default; with --force, gw prints a warning and
+    continues.
+
+  post-remove
+    Trigger: After worktree removal.
+    Working directory: repository root.
+    GW_WORKTREE_PATH has been removed and no longer exists on disk.
+    GW_BRANCH names the branch the removed worktree was pointing at; the
+    branch ref itself still exists (`git worktree remove` does not delete
+    branches). Delete it from this hook if you want that behaviour.
+    On failure: gw prints a warning to stderr; the operation still succeeds.
+
+ENVIRONMENT VARIABLES
+
+  GW_REPO_ROOT      Absolute path to the main repository root.
+  GW_WORKTREE_PATH  Absolute path to the worktree (existence varies per hook,
+                    see above).
+  GW_BRANCH         Branch name.
+
+  In addition to these, the hook inherits the full environment of the `gw`
+  process (PATH, HOME, GIT_*, etc. pass through unchanged).
+
+FILE FORMAT
+
+  Hooks are ordinary executable files. The file name must match the hook
+  name exactly (e.g. .gw/hooks/pre-add, no extension). A file named
+  .gw/hooks/pre-add.sh is silently ignored.
+
+  Any language works as long as the file has an executable bit set
+  (chmod +x). A hook file that does not exist is treated as a no-op. A
+  hook file that exists but is not executable is an error.
+
+  Hook stdout and stderr are forwarded to gw's stderr. Stdin is closed
+  (not the terminal); interactive prompts will hang or read EOF. The hook's
+  exit code determines success (0) or failure (non-zero).
+
+DISABLING HOOKS
+
+  `gw add --no-hooks` skips pre-add and post-add for that invocation.
+  `gw rm --no-hooks` skips pre-remove and post-remove for that invocation.
+
+EXAMPLE
+
+  The post-add example below matches the placeholder template that
+  `gw init` writes to .gw/hooks/post-add. Other hook templates follow the
+  same shape: each starts with `#!/bin/sh`, lists the available env vars
+  as comments, and contains a single example command.
+
+    #!/bin/sh
+    # gw hook: post-add
+    # Full hook semantics: gw help hooks
+    #
+    # Available environment variables:
+    #   GW_REPO_ROOT
+    #   GW_WORKTREE_PATH
+    #   GW_BRANCH
+    #
+    # Example:
+    # npm install
+    # cp "$GW_REPO_ROOT/.env" "$GW_WORKTREE_PATH/.env"
