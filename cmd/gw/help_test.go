@@ -60,12 +60,15 @@ func TestHelp_Command_MatchesFlagHelp(t *testing.T) {
 
 func TestHelp_HelpFlagItself(t *testing.T) {
 	// `gw help --help` and `gw help -h` should show help for the help command,
-	// matching the behaviour of every other subcommand.
+	// matching the behaviour of every other subcommand. Anchor on the help
+	// command's UsageText, which is unique to its own help page (the root and
+	// other subcommands never emit this exact line).
+	const helpUsageLine = "gw help [<command>|<topic>|all]"
 	for _, arg := range []string{"--help", "-h"} {
 		stdout, stderr, exitCode := runGw(t, t.TempDir(), "help", arg)
 		requireOK(t, "gw help "+arg, exitCode, stderr)
-		if !strings.Contains(stdout, "gw help") || !strings.Contains(stdout, "topic") {
-			t.Errorf("`gw help %s` should show help for the help command, got: %q", arg, stdout)
+		if !strings.Contains(stdout, helpUsageLine) {
+			t.Errorf("`gw help %s` should show help for the help command (expected to contain %q), got: %q", arg, helpUsageLine, stdout)
 		}
 	}
 }
@@ -127,15 +130,19 @@ func TestUsageError_NoDuplicateMessage(t *testing.T) {
 func TestHelp_UnknownTarget_MatchesUnknownSubcommand(t *testing.T) {
 	// `gw help <X>` and `gw <X>` should return the same wording and the same
 	// exit code when X is neither a topic nor a subcommand. Both go through
-	// urfave's convention (exit 3, "No help topic for 'X'").
+	// urfave's convention (exit 3, "No help topic for 'X'"). Pin the output
+	// contract to exactly one body occurrence per entry point so a future
+	// change that adds a second print path (e.g. main() printing on top of
+	// urfave's HandleExitCoder, or vice versa) is caught.
+	const body = "No help topic for 'does-not-exist'"
 	_, stderrHelp, codeHelp := runGw(t, t.TempDir(), "help", "does-not-exist")
 	_, stderrDirect, codeDirect := runGw(t, t.TempDir(), "does-not-exist")
 	if codeHelp != codeDirect {
 		t.Errorf("`gw help X` and `gw X` should share an exit code, got %d vs %d", codeHelp, codeDirect)
 	}
-	for _, s := range []string{stderrHelp, stderrDirect} {
-		if !strings.Contains(s, "No help topic for 'does-not-exist'") {
-			t.Errorf("stderr should contain unified wording, got: %q", s)
+	for label, s := range map[string]string{"help X": stderrHelp, "direct X": stderrDirect} {
+		if got := strings.Count(s, body); got != 1 {
+			t.Errorf("%s: expected %q exactly once, got %d:\n%s", label, body, got, s)
 		}
 	}
 }
