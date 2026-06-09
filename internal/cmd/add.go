@@ -14,7 +14,6 @@ import (
 
 // Add implements the "gw add" command.
 func Add(branch, from string, noHooks bool) error {
-	// 1. Detect repo root
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -25,7 +24,6 @@ func Add(branch, from string, noHooks bool) error {
 		return err
 	}
 
-	// 2. Calculate worktree path
 	cfg, err := config.Load(repoRoot)
 	if err != nil {
 		return err
@@ -48,7 +46,6 @@ func Add(branch, from string, noHooks bool) error {
 		return err
 	}
 
-	// 3. Check branch existence, validate args, and resolve start-point ref
 	exists, err := git.BranchExists(repoRoot, branch)
 	if err != nil {
 		return err
@@ -85,19 +82,16 @@ func Add(branch, from string, noHooks bool) error {
 		gitArgs = []string{"worktree", "add", wtPath, branch}
 	}
 
-	// Ensure base directory exists
 	if err := pathutil.EnsureBaseDir(baseDir); err != nil {
 		return err
 	}
 
-	// 4. Run pre-add hook (at repo root)
 	if !noHooks {
 		if err := hook.Run(repoRoot, hook.PreAdd, wtPath, branch, os.Stderr); err != nil {
 			return fmt.Errorf("pre-add hook failed: %w", err)
 		}
 	}
 
-	// 5. Create worktree
 	gitCmd := exec.Command("git", gitArgs...)
 	gitCmd.Dir = repoRoot
 	gitCmd.Stdout = os.Stderr
@@ -107,14 +101,12 @@ func Add(branch, from string, noHooks bool) error {
 		return fmt.Errorf("git worktree add failed: %w", err)
 	}
 
-	// 6. Run post-add hook (in worktree directory)
 	if !noHooks {
 		if err := hook.Run(repoRoot, hook.PostAdd, wtPath, branch, os.Stderr); err != nil {
 			fmt.Fprintf(os.Stderr, "gw: warning: post-add hook failed: %v\n", err)
 		}
 	}
 
-	// 7. Output path to stdout
 	fmt.Println(wtPath)
 
 	return nil
