@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 
 	"github.com/gin0606/gw/internal/pathutil"
@@ -114,23 +115,23 @@ func TestValidatePath_NotExists(t *testing.T) {
 	}
 }
 
-// TestValidatePath_StatErrorNotMistakenForMissing ensures that os.Stat errors
-// other than fs.ErrNotExist surface to the caller instead of being swallowed.
-// We trigger ENOTDIR by treating a regular file as if it were a directory in
-// the lookup path.
+// Stat'ing a path under a regular file fails with ENOTDIR, which is the
+// canonical non-fs.ErrNotExist failure we must not silently treat as "absent".
 func TestValidatePath_StatErrorNotMistakenForMissing(t *testing.T) {
 	dir := t.TempDir()
 	file := filepath.Join(dir, "not-a-dir")
-	if err := os.WriteFile(file, []byte{}, 0644); err != nil {
+	if err := os.WriteFile(file, []byte{}, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(file, "child")
 
-	err := pathutil.ValidatePath(target)
+	err := pathutil.ValidatePath(filepath.Join(file, "child"))
 	if err == nil {
-		t.Fatal("expected error when Stat fails with non-ENOENT, got nil")
+		t.Fatal("expected error, got nil")
 	}
 	if errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("error should not wrap fs.ErrNotExist, got %v", err)
+	}
+	if !errors.Is(err, syscall.ENOTDIR) {
+		t.Errorf("error should wrap ENOTDIR, got %v", err)
 	}
 }

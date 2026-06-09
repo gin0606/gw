@@ -42,7 +42,9 @@ func ComputePath(baseDir, branch string) (string, error) {
 	return filepath.Join(baseDir, sanitized), nil
 }
 
-// ValidatePath checks that the target directory does not already exist.
+// ValidatePath returns nil if path does not exist. Non-fs.ErrNotExist Stat
+// errors (permission denied, ENOTDIR on a parent, etc.) are propagated so
+// callers don't mistake them for "path is available".
 func ValidatePath(path string) error {
 	_, err := os.Stat(path)
 	if err == nil {
