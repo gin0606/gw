@@ -95,22 +95,37 @@ func TestRun_EnvironmentVariables(t *testing.T) {
 
 func TestRun_Cwd(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
-	outFile := filepath.Join(t.TempDir(), "pwd.txt")
-
-	repo.WriteHook("pre-add", "#!/bin/sh\npwd -P > "+outFile+"\n")
-
-	err := hook.Run(repo.Root, hook.PreAdd, "/some/path", "main", &bytes.Buffer{})
+	worktreePath, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	data, err := os.ReadFile(outFile)
-	if err != nil {
-		t.Fatal(err)
+	cases := []struct {
+		name hook.Name
+		want string
+	}{
+		{hook.PreAdd, repo.Root},
+		{hook.PostAdd, worktreePath},
+		{hook.PreRemove, worktreePath},
+		{hook.PostRemove, repo.Root},
 	}
-	got := strings.TrimSpace(string(data))
-	if got != repo.Root {
-		t.Errorf("cwd = %q, want %q", got, repo.Root)
+	for _, tc := range cases {
+		t.Run(string(tc.name), func(t *testing.T) {
+			outFile := filepath.Join(t.TempDir(), "pwd.txt")
+			repo.WriteHook(string(tc.name), "#!/bin/sh\npwd -P > "+outFile+"\n")
+
+			if err := hook.Run(repo.Root, tc.name, worktreePath, "main", &bytes.Buffer{}); err != nil {
+				t.Fatal(err)
+			}
+
+			data, err := os.ReadFile(outFile)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := strings.TrimSpace(string(data)); got != tc.want {
+				t.Errorf("cwd = %q, want %q", got, tc.want)
+			}
+		})
 	}
 }
 
