@@ -14,6 +14,10 @@ import (
 // derived from name (see Name.cwd), so callers only supply repoRoot and the
 // worktree path; the hook-vs-cwd mapping is not duplicated at every call
 // site.
+//
+// A missing hook file is a no-op and returns nil. A hook file that exists
+// but lacks the executable bit returns an error (it is not silently
+// skipped). Hook stdout and stderr are both written to output.
 func Run(repoRoot string, name Name, worktreePath, branch string, output io.Writer) error {
 	hookPath := filepath.Join(repoRoot, ".gw", "hooks", string(name))
 
@@ -31,6 +35,8 @@ func Run(repoRoot string, name Name, worktreePath, branch string, output io.Writ
 
 	cmd := exec.Command(hookPath)
 	cmd.Dir = name.cwd(repoRoot, worktreePath)
+	// Stdin is left unset so os/exec attaches the null device, matching the
+	// "stdin reads EOF immediately" contract documented in `gw help hooks`.
 	cmd.Stdout = output
 	cmd.Stderr = output
 	cmd.Env = append(os.Environ(),
