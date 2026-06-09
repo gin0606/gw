@@ -29,9 +29,9 @@ HOOKS
     Trigger: After worktree removal.
     Working directory: repository root.
     GW_WORKTREE_PATH has been removed and no longer exists on disk.
-    GW_BRANCH names the branch the removed worktree was pointing at; the
-    branch ref itself still exists (`git worktree remove` does not delete
-    branches). Delete it from this hook if you want that behaviour.
+    When GW_BRANCH is non-empty, the branch ref itself still exists
+    (`git worktree remove` does not delete branches); delete it from this
+    hook if you want that behaviour.
     On failure: gw prints a warning to stderr; the operation still succeeds.
 
 ENVIRONMENT VARIABLES
@@ -39,7 +39,7 @@ ENVIRONMENT VARIABLES
   GW_REPO_ROOT      Absolute path to the main repository root.
   GW_WORKTREE_PATH  Absolute path to the worktree (existence varies per hook,
                     see above).
-  GW_BRANCH         Branch name.
+  GW_BRANCH         Branch name, or empty for a detached-HEAD worktree.
 
   In addition to these, the hook inherits the full environment of the `gw`
   process (PATH, HOME, GIT_*, etc. pass through unchanged).
@@ -68,7 +68,8 @@ EXAMPLE
   The post-add example below matches the placeholder template that
   `gw init` writes to .gw/hooks/post-add. Other hook templates follow the
   same shape: each starts with `#!/bin/sh`, lists the available env vars
-  as comments, and contains a single example command.
+  as comments, and contains a commented-out example body (one or more
+  lines, depending on the hook).
 
     #!/bin/sh
     # gw hook: post-add
