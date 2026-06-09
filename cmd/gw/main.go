@@ -250,15 +250,16 @@ const helpDescription = `Show help for a command or topic.
   gw help <topic>      One of: hooks, config, completion, path, recipes.
   gw help all          Root overview, every command, and every topic.`
 
-// helpAllExcluded names the framework-managed commands omitted from
-// `gw help all`. `completion` is documented under `gw help completion` and
-// `help` itself would be self-referential.
+// helpAllExcluded names the subcommands omitted from `gw help all`:
+// `completion` is auto-injected by urfave/cli for shell-script generation and
+// is documented under `gw help completion`, and `help` itself would be
+// self-referential.
 var helpAllExcluded = map[string]bool{"help": true, "completion": true}
 
 // helpAllCommandsOf returns the user-facing subcommands of root in display
 // order, deriving the list from root.Commands so it cannot drift from the
-// commands actually registered. Hidden commands and framework-managed
-// commands (see helpAllExcluded) are filtered out.
+// commands actually registered. Hidden commands and the ones listed in
+// helpAllExcluded are filtered out.
 func helpAllCommandsOf(root *cli.Command) []*cli.Command {
 	var out []*cli.Command
 	for _, sub := range root.Commands {
