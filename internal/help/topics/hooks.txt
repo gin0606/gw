@@ -54,9 +54,9 @@ FILE FORMAT
   (chmod +x). A hook file that does not exist is treated as a no-op. A
   hook file that exists but is not executable is an error.
 
-  Hook stdout and stderr are forwarded to gw's stderr. Stdin is closed
-  (not the terminal); interactive prompts will hang or read EOF. The hook's
-  exit code determines success (0) or failure (non-zero).
+  Hook stdout and stderr are forwarded to gw's stderr. Stdin is connected
+  to /dev/null (not the terminal); interactive prompts read EOF immediately.
+  The hook's exit code determines success (0) or failure (non-zero).
 
 DISABLING HOOKS
 
