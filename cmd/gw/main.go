@@ -316,8 +316,8 @@ func runHelp(ctx context.Context, root *cli.Command, target string) error {
 	}
 	body, err := help.Topic(target)
 	if err == nil {
-		_, werr := fmt.Fprint(root.Writer, body)
-		return werr
+		fmt.Fprint(root.Writer, body)
+		return nil
 	}
 	if !errors.Is(err, help.ErrUnknownTopic) {
 		// Internal failure (corrupt embed FS, missing topic file); surface it.
@@ -336,18 +336,12 @@ func runHelp(ctx context.Context, root *cli.Command, target string) error {
 func printHelpAll(root *cli.Command) error {
 	w := root.Writer
 
-	if _, err := fmt.Fprintln(w, help.SectionHeader("OVERVIEW", "")); err != nil {
-		return err
-	}
+	fmt.Fprintln(w, help.SectionHeader("OVERVIEW", ""))
 	cli.HelpPrinter(w, cli.RootCommandHelpTemplate, root)
 
 	for _, sub := range helpAllCommandsOf(root) {
-		if _, err := fmt.Fprintln(w); err != nil {
-			return err
-		}
-		if _, err := fmt.Fprintln(w, help.SectionHeader("COMMAND", sub.Name)); err != nil {
-			return err
-		}
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, help.SectionHeader("COMMAND", sub.Name))
 		cli.HelpPrinter(w, cli.CommandHelpTemplate, sub)
 	}
 
@@ -356,15 +350,9 @@ func printHelpAll(root *cli.Command) error {
 		if err != nil {
 			return fmt.Errorf("internal: render help topic %q: %w", name, err)
 		}
-		if _, err := fmt.Fprintln(w); err != nil {
-			return err
-		}
-		if _, err := fmt.Fprintln(w, help.SectionHeader("TOPIC", name)); err != nil {
-			return err
-		}
-		if _, err := fmt.Fprint(w, body); err != nil {
-			return err
-		}
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, help.SectionHeader("TOPIC", name))
+		fmt.Fprint(w, body)
 	}
 	return nil
 }
