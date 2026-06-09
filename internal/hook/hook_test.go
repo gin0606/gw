@@ -14,7 +14,7 @@ import (
 func TestRun_HookNotExists(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
-	err := hook.Run(repo.Root, "pre-add", repo.Root, "/some/path", "main", &bytes.Buffer{})
+	err := hook.Run(repo.Root, hook.PreAdd, "/some/path", "main", &bytes.Buffer{})
 	if err != nil {
 		t.Errorf("expected no error for missing hook, got: %v", err)
 	}
@@ -24,7 +24,7 @@ func TestRun_HookExistsExitZero(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 	repo.WriteHook("pre-add", "#!/bin/sh\nexit 0\n")
 
-	err := hook.Run(repo.Root, "pre-add", repo.Root, "/some/path", "main", &bytes.Buffer{})
+	err := hook.Run(repo.Root, hook.PreAdd, "/some/path", "main", &bytes.Buffer{})
 	if err != nil {
 		t.Errorf("expected no error, got: %v", err)
 	}
@@ -34,7 +34,7 @@ func TestRun_HookNotExecutable(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 	repo.WriteHookNoExec("pre-add", "#!/bin/sh\nexit 0\n")
 
-	err := hook.Run(repo.Root, "pre-add", repo.Root, "/some/path", "main", &bytes.Buffer{})
+	err := hook.Run(repo.Root, hook.PreAdd, "/some/path", "main", &bytes.Buffer{})
 	if err == nil {
 		t.Error("expected error for non-executable hook")
 	}
@@ -44,7 +44,7 @@ func TestRun_HookNonZeroExit(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 	repo.WriteHook("pre-add", "#!/bin/sh\nexit 1\n")
 
-	err := hook.Run(repo.Root, "pre-add", repo.Root, "/some/path", "main", &bytes.Buffer{})
+	err := hook.Run(repo.Root, hook.PreAdd, "/some/path", "main", &bytes.Buffer{})
 	if err == nil {
 		t.Error("expected error for non-zero exit")
 	}
@@ -61,7 +61,7 @@ func TestRun_EnvironmentVariables(t *testing.T) {
 
 	wtPath := "/expected/worktree/path"
 	branch := "feature/test"
-	err := hook.Run(repo.Root, "pre-add", repo.Root, wtPath, branch, &bytes.Buffer{})
+	err := hook.Run(repo.Root, hook.PreAdd, wtPath, branch, &bytes.Buffer{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,7 @@ func TestRun_Cwd(t *testing.T) {
 
 	repo.WriteHook("pre-add", "#!/bin/sh\npwd -P > "+outFile+"\n")
 
-	err := hook.Run(repo.Root, "pre-add", repo.Root, "/some/path", "main", &bytes.Buffer{})
+	err := hook.Run(repo.Root, hook.PreAdd, "/some/path", "main", &bytes.Buffer{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func TestRun_StdoutToOutput(t *testing.T) {
 	repo.WriteHook("pre-add", "#!/bin/sh\necho 'hook stdout'\n")
 
 	var buf bytes.Buffer
-	err := hook.Run(repo.Root, "pre-add", repo.Root, "/some/path", "main", &buf)
+	err := hook.Run(repo.Root, hook.PreAdd, "/some/path", "main", &buf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func TestRun_AllSpecEnvVarsArePassed(t *testing.T) {
 
 	repo.WriteHook("pre-add", "#!/bin/sh\nenv | grep '^GW_' | sort > "+outFile+"\n")
 
-	err := hook.Run(repo.Root, hook.PreAdd, repo.Root, "/some/path", "main", &bytes.Buffer{})
+	err := hook.Run(repo.Root, hook.PreAdd, "/some/path", "main", &bytes.Buffer{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +173,7 @@ func TestRun_StderrToOutput(t *testing.T) {
 	repo.WriteHook("pre-add", "#!/bin/sh\necho 'hook stderr' >&2\n")
 
 	var buf bytes.Buffer
-	err := hook.Run(repo.Root, "pre-add", repo.Root, "/some/path", "main", &buf)
+	err := hook.Run(repo.Root, hook.PreAdd, "/some/path", "main", &buf)
 	if err != nil {
 		t.Fatal(err)
 	}

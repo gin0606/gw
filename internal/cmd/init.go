@@ -47,7 +47,7 @@ func Init() error {
 
 	for _, name := range hook.Names() {
 		content := renderHookTemplate(name)
-		if err := os.WriteFile(filepath.Join(hooksDir, name), []byte(content), 0755); err != nil {
+		if err := os.WriteFile(filepath.Join(hooksDir, string(name)), []byte(content), 0755); err != nil {
 			return cleanupAndReturn(gwDir, fmt.Errorf("write .gw/hooks/%s: %w", name, err))
 		}
 	}
@@ -76,7 +76,7 @@ func renderConfigTemplate(repoName string) string {
 	return fmt.Sprintf("# See: gw help config\n%s = \"../%s%s\"\n", config.KeyWorktreesDir, repoName, pathutil.DefaultBaseDirSuffix)
 }
 
-func renderHookTemplate(name string) string {
+func renderHookTemplate(name hook.Name) string {
 	var b strings.Builder
 	b.WriteString("#!/bin/sh\n")
 	fmt.Fprintf(&b, "# gw hook: %s\n", name)
@@ -94,7 +94,7 @@ func renderHookTemplate(name string) string {
 	return b.String()
 }
 
-func exampleLines(name string) []string {
+func exampleLines(name hook.Name) []string {
 	switch name {
 	case hook.PreAdd:
 		return []string{

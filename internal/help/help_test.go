@@ -86,11 +86,11 @@ func TestReadmes_ReferenceCLIHelpTopics(t *testing.T) {
 	}
 }
 
-func assertContainsAll(t *testing.T, source, body string, idents []string) {
+func assertContainsAll[T ~string](t *testing.T, source, body string, idents []T) {
 	t.Helper()
 	for _, id := range idents {
-		if !strings.Contains(body, id) {
-			t.Errorf("%s: missing identifier %q", source, id)
+		if !strings.Contains(body, string(id)) {
+			t.Errorf("%s: missing identifier %q", source, string(id))
 		}
 	}
 }

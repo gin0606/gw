@@ -77,7 +77,7 @@ func TestHelp_Topic(t *testing.T) {
 	stdout, stderr, exitCode := runGw(t, t.TempDir(), "help", "hooks")
 	requireOK(t, "gw help hooks", exitCode, stderr)
 	for _, name := range hook.Names() {
-		if !strings.Contains(stdout, name) {
+		if !strings.Contains(stdout, string(name)) {
 			t.Errorf("`gw help hooks` should mention %q, got: %q", name, stdout)
 		}
 	}
@@ -167,7 +167,7 @@ func TestHelp_All_ContainsAllSectionsAndIdentifiers(t *testing.T) {
 		}
 	}
 	for _, name := range hook.Names() {
-		if !strings.Contains(stdout, name) {
+		if !strings.Contains(stdout, string(name)) {
 			t.Errorf("`gw help all` missing hook name %q", name)
 		}
 	}
@@ -274,7 +274,7 @@ func TestInit_HookTemplatesReferenceHelpHooks(t *testing.T) {
 		t.Fatalf("gw init exit code = %d, want 0; stderr: %s", exitCode, stderr)
 	}
 	for _, name := range hook.Names() {
-		path := filepath.Join(repo.Root, ".gw", "hooks", name)
+		path := filepath.Join(repo.Root, ".gw", "hooks", string(name))
 		info, err := os.Stat(path)
 		if err != nil {
 			t.Errorf("stat %s: %v", name, err)

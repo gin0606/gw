@@ -92,7 +92,7 @@ func Add(branch, from string, noHooks bool) error {
 
 	// 4. Run pre-add hook (at repo root)
 	if !noHooks {
-		if err := hook.Run(repoRoot, hook.PreAdd, repoRoot, wtPath, branch, os.Stderr); err != nil {
+		if err := hook.Run(repoRoot, hook.PreAdd, wtPath, branch, os.Stderr); err != nil {
 			return fmt.Errorf("pre-add hook failed: %w", err)
 		}
 	}
@@ -109,7 +109,7 @@ func Add(branch, from string, noHooks bool) error {
 
 	// 6. Run post-add hook (in worktree directory)
 	if !noHooks {
-		if err := hook.Run(repoRoot, hook.PostAdd, wtPath, wtPath, branch, os.Stderr); err != nil {
+		if err := hook.Run(repoRoot, hook.PostAdd, wtPath, branch, os.Stderr); err != nil {
 			fmt.Fprintf(os.Stderr, "gw: warning: post-add hook failed: %v\n", err)
 		}
 	}
