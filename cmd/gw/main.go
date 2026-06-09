@@ -36,7 +36,8 @@ In-depth reference:
 For a single dump that an agent can consume in one shot:
   gw help all
 
-Shell completion (the framework hides the subcommand from the list above):
+Shell completion (the completion subcommand is hidden from the COMMANDS
+list below):
   gw completion bash | zsh | fish | pwsh
 
 Output contract:
