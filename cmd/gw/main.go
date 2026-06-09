@@ -249,7 +249,8 @@ const helpDescription = `Show help for a command or topic.
   gw help              Root overview (same as gw --help).
   gw help <command>    Same as gw <command> --help.
   gw help <topic>      One of: hooks, config, completion, path, recipes.
-  gw help all          Root overview, every command, and every topic.`
+  gw help all          Root overview, every user-facing command (except
+                       help itself), and every topic.`
 
 // helpAllExcluded names the subcommands omitted from `gw help all`:
 // `completion` is auto-injected by urfave/cli for shell-script generation and
