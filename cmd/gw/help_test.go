@@ -99,11 +99,45 @@ func TestHelp_CompletionTopicShadowsAutoSubcommand(t *testing.T) {
 
 func TestHelp_UnknownTopic(t *testing.T) {
 	_, stderr, exitCode := runGw(t, t.TempDir(), "help", "does-not-exist")
-	if exitCode == 0 {
-		t.Error("expected non-zero exit code for unknown topic")
+	if exitCode != 3 {
+		t.Errorf("expected exit code 3 (matching urfave's `No help topic` convention), got %d", exitCode)
 	}
-	if !strings.Contains(stderr, "unknown command or topic") {
-		t.Errorf("stderr should explain the unknown target, got: %q", stderr)
+	if !strings.Contains(stderr, "No help topic for 'does-not-exist'") {
+		t.Errorf("stderr should match urfave's wording, got: %q", stderr)
+	}
+}
+
+func TestUsageError_NoDuplicateMessage(t *testing.T) {
+	// `gw add --from` without a value used to print the urfave "Incorrect Usage"
+	// line and then have main.go re-print the underlying error. Verify the
+	// error message body appears at most once on stderr.
+	repo := testutil.NewTestRepo(t)
+	_, stderr, exitCode := runGw(t, repo.Root, "add", "--from")
+	if exitCode == 0 {
+		t.Fatal("expected non-zero exit code for missing flag value")
+	}
+	body := "flag needs an argument: --from"
+	if got := strings.Count(stderr, body); got != 1 {
+		t.Errorf("expected %q to appear exactly once in stderr, got %d:\n%s", body, got, stderr)
+	}
+	if !strings.HasPrefix(stderr, "Incorrect Usage: ") {
+		t.Errorf("stderr should start with 'Incorrect Usage:', got: %q", stderr)
+	}
+}
+
+func TestHelp_UnknownTarget_MatchesUnknownSubcommand(t *testing.T) {
+	// `gw help <X>` and `gw <X>` should return the same wording and the same
+	// exit code when X is neither a topic nor a subcommand. Both go through
+	// urfave's convention (exit 3, "No help topic for 'X'").
+	_, stderrHelp, codeHelp := runGw(t, t.TempDir(), "help", "does-not-exist")
+	_, stderrDirect, codeDirect := runGw(t, t.TempDir(), "does-not-exist")
+	if codeHelp != codeDirect {
+		t.Errorf("`gw help X` and `gw X` should share an exit code, got %d vs %d", codeHelp, codeDirect)
+	}
+	for _, s := range []string{stderrHelp, stderrDirect} {
+		if !strings.Contains(s, "No help topic for 'does-not-exist'") {
+			t.Errorf("stderr should contain unified wording, got: %q", s)
+		}
 	}
 }
 

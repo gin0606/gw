@@ -45,20 +45,34 @@ Output contract:
 
 func main() {
 	root := newApp()
-	if err := root.Run(context.Background(), os.Args); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
+	err := root.Run(context.Background(), os.Args)
+	if err == nil {
+		return
 	}
+	// cli.ExitCoder (cli.Exit, OnUsageError result) carries its own message and
+	// exit code; trust them and skip the generic re-print path so urfave's
+	// "Incorrect Usage:" output is not duplicated. We use a direct type
+	// assertion rather than errors.As to avoid matching `*exec.ExitError` and
+	// other unrelated types that happen to satisfy the ExitCoder shape.
+	if coder, ok := err.(cli.ExitCoder); ok {
+		if msg := coder.Error(); msg != "" {
+			fmt.Fprintln(os.Stderr, msg)
+		}
+		os.Exit(coder.ExitCode())
+	}
+	fmt.Fprintf(os.Stderr, "%v\n", err)
+	os.Exit(1)
 }
 
 func newApp() *cli.Command {
-	return &cli.Command{
+	root := &cli.Command{
 		Name:                  "gw",
 		Usage:                 "A thin wrapper around git worktree with lifecycle hooks",
 		Description:           rootDescription,
 		Version:               version,
 		EnableShellCompletion: true,
 		HideHelpCommand:       true,
+		OnUsageError:          handleUsageError,
 		Commands: []*cli.Command{
 			cmdInit(),
 			cmdAdd(),
@@ -67,6 +81,19 @@ func newApp() *cli.Command {
 			cmdHelp(),
 		},
 	}
+	// Propagate the usage-error handler to every user-facing subcommand so
+	// flag-parsing failures inside them are reported through the same path.
+	for _, sub := range root.Commands {
+		sub.OnUsageError = handleUsageError
+	}
+	return root
+}
+
+// handleUsageError formats urfave/cli's flag-parsing failures itself and
+// returns a silent cli.Exit so main does not re-print the underlying error.
+func handleUsageError(ctx context.Context, cmd *cli.Command, err error, isSubcommand bool) error {
+	fmt.Fprintf(cmd.Root().ErrWriter, "Incorrect Usage: %s\n", err.Error())
+	return cli.Exit("", 1)
 }
 
 const initDescription = `Create .gw/config and .gw/hooks/ with default templates in the repository
@@ -291,7 +318,9 @@ func runHelp(ctx context.Context, root *cli.Command, target string) error {
 			return cli.ShowCommandHelp(ctx, root, target)
 		}
 	}
-	return fmt.Errorf("unknown command or topic: %s", target)
+	// Match urfave/cli's wording and exit code for `gw <unknown>` so the two
+	// entry points (`gw help <unknown>` vs `gw <unknown>`) behave the same.
+	return cli.Exit(fmt.Sprintf("No help topic for '%s'", target), 3)
 }
 
 func printHelpAll(root *cli.Command) error {
