@@ -777,6 +777,56 @@ func TestRm_NotFound(t *testing.T) {
 	}
 }
 
+// A non-existent path under repo root makes filepath.EvalSymlinks return
+// fs.ErrNotExist, which is folded into "not a git worktree" so a typo in
+// the path argument is reported as a plain missing-worktree error rather
+// than a symlink-resolution failure.
+func TestRm_NotFound_MissingPath(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	_, stderr, exitCode := runGw(t, repo.Root, "rm", filepath.Join(repo.Root, "ghost"))
+
+	if exitCode != 1 {
+		t.Errorf("exit code = %d, want 1", exitCode)
+	}
+	if !strings.Contains(stderr, "is not a git worktree") {
+		t.Errorf("expected 'is not a git worktree' in stderr, got: %q", stderr)
+	}
+	if strings.Contains(stderr, "resolve symlinks") {
+		t.Errorf("missing path should not be reported as symlink-resolution failure: %q", stderr)
+	}
+}
+
+// filepath.EvalSymlinks walks each path component, so a child under a regular
+// file fails with ENOTDIR (not fs.ErrNotExist). For a path that is not
+// registered as a worktree, that failure must surface as a symlink-resolution
+// error rather than be conflated with "not a git worktree".
+func TestRm_SymlinkResolutionError_NotMistakenForMissing(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	notDir := filepath.Join(repo.Root, "not-a-dir")
+	if err := os.WriteFile(notDir, []byte{}, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, stderr, exitCode := runGw(t, repo.Root, "rm", filepath.Join(notDir, "child"))
+
+	if exitCode != 1 {
+		t.Errorf("exit code = %d, want 1", exitCode)
+	}
+	if strings.Contains(stderr, "is not a git worktree") {
+		t.Errorf("symlink-resolution failure should not be reported as 'is not a git worktree': %q", stderr)
+	}
+	if !strings.Contains(stderr, "resolve symlinks") {
+		t.Errorf("expected 'resolve symlinks' in stderr, got: %q", stderr)
+	}
+	// The offending path must propagate through the wrapped fs.PathError so
+	// users can see which component failed.
+	if !strings.Contains(stderr, notDir) {
+		t.Errorf("expected wrapped path %q in stderr, got: %q", notDir, stderr)
+	}
+}
+
 func TestRm_BranchSurvives(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
@@ -972,6 +1022,42 @@ func TestRm_StaleWorktree(t *testing.T) {
 
 	if exitCode != 0 {
 		t.Errorf("exit code = %d, want 0", exitCode)
+	}
+}
+
+// When a registered worktree's parent directory has been replaced by a
+// regular file, filepath.EvalSymlinks fails with ENOTDIR. Because the path
+// still lives in git's worktree metadata, `gw rm --force` (force so the
+// underlying `git worktree remove --force` tolerates the broken checkout)
+// must reach the cleanup path instead of bailing out on the resolution error.
+func TestRm_StaleWorktree_ParentReplacedWithFile(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/stale-parent")
+	if exitCode != 0 {
+		t.Fatalf("gw add exit code = %d, want 0", exitCode)
+	}
+	wtPath := strings.TrimSpace(addStdout)
+
+	parent := filepath.Dir(wtPath)
+	if err := os.RemoveAll(parent); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(parent, []byte{}, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, exitCode = runGw(t, repo.Root, "rm", "--force", wtPath)
+	if exitCode != 0 {
+		t.Errorf("exit code = %d, want 0", exitCode)
+	}
+
+	listStdout, _, exitCode := runGw(t, repo.Root, "list")
+	if exitCode != 0 {
+		t.Fatalf("gw list exit code = %d, want 0", exitCode)
+	}
+	if strings.Contains(listStdout, wtPath) {
+		t.Errorf("worktree %q should be cleaned from git metadata, got: %q", wtPath, listStdout)
 	}
 }
 

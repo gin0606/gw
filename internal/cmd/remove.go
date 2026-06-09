@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,16 +14,19 @@ import (
 
 // Remove implements the "gw rm" command.
 func Remove(path string, force, noHooks bool) error {
-	// 1. Normalize path to absolute and resolve symlinks
+	// EvalSymlinks failures are deferred: a registered worktree whose on-disk
+	// path is broken (parent gone, replaced by a file, etc.) must still match
+	// git's metadata via the absolute-but-unresolved path so that
+	// `gw rm --force` can clean it up.
 	wtPath, err := filepath.Abs(path)
 	if err != nil {
 		return err
 	}
-	if resolved, err := filepath.EvalSymlinks(wtPath); err == nil {
+	resolved, evalSymlinksErr := filepath.EvalSymlinks(wtPath)
+	if evalSymlinksErr == nil {
 		wtPath = resolved
 	}
 
-	// 2. Detect repo root from current working directory
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -31,7 +36,6 @@ func Remove(path string, force, noHooks bool) error {
 		return err
 	}
 
-	// 3. Look up the worktree to get its branch name (needed for hooks)
 	worktrees, err := git.ListWorktrees(repoRoot)
 	if err != nil {
 		return err
@@ -47,13 +51,18 @@ func Remove(path string, force, noHooks bool) error {
 		}
 	}
 	if !found {
+		// A non-ENOENT EvalSymlinks failure (e.g. ENOTDIR on an intermediate
+		// component) on an unregistered path is a real I/O problem, not a
+		// typo: surface it instead of masking it as "not a git worktree".
+		if evalSymlinksErr != nil && !errors.Is(evalSymlinksErr, fs.ErrNotExist) {
+			return fmt.Errorf("resolve symlinks for %q: %w", wtPath, evalSymlinksErr)
+		}
 		return fmt.Errorf("path %q is not a git worktree", wtPath)
 	}
 	if wtPath == repoRoot {
 		return fmt.Errorf("cannot remove the main worktree")
 	}
 
-	// Run pre-remove hook (in worktree directory)
 	if !noHooks {
 		if err := hook.Run(repoRoot, hook.PreRemove, wtPath, wtPath, branch, os.Stderr); err != nil {
 			if !force {
@@ -63,7 +72,6 @@ func Remove(path string, force, noHooks bool) error {
 		}
 	}
 
-	// 3. Remove worktree
 	gitArgs := []string{"worktree", "remove"}
 	if force {
 		gitArgs = append(gitArgs, "--force")
@@ -79,7 +87,6 @@ func Remove(path string, force, noHooks bool) error {
 		return fmt.Errorf("git worktree remove failed: %w", err)
 	}
 
-	// 4. Run post-remove hook (at repo root)
 	if !noHooks {
 		if err := hook.Run(repoRoot, hook.PostRemove, repoRoot, wtPath, branch, os.Stderr); err != nil {
 			fmt.Fprintf(os.Stderr, "gw: warning: post-remove hook failed: %v\n", err)
