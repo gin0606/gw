@@ -137,10 +137,10 @@ Branch resolution:
   If <branch> already exists, gw uses it. Otherwise gw creates a new branch
   from origin/<default-branch>; if that remote-tracking ref does not exist,
   gw falls back to the local <default-branch>. The default branch is the
-  one origin/HEAD points at, so the repository must have origin/HEAD
-  configured ('git remote set-head origin --auto'). On a repository without
-  origin/HEAD (e.g. no remote), use --from to override the start point.
-  --from overrides the start point; passing --from together with an
+  one origin/HEAD points at, so creating a new branch without --from
+  requires origin/HEAD to be configured
+  ('git remote set-head origin --auto'); otherwise pass --from <ref> to
+  choose the start point yourself. Passing --from together with an
   existing branch is an error.
 
 Worktree path:
