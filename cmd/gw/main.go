@@ -49,11 +49,14 @@ func main() {
 	if err == nil {
 		return
 	}
-	// cli.ExitCoder (cli.Exit, OnUsageError result) carries its own message and
-	// exit code; trust them and skip the generic re-print path so urfave's
-	// "Incorrect Usage:" output is not duplicated. We use a direct type
-	// assertion rather than errors.As to avoid matching `*exec.ExitError` and
-	// other unrelated types that happen to satisfy the ExitCoder shape.
+	// By the time control reaches here, the root ExitErrHandler set in newApp
+	// has suppressed urfave's default HandleExitCoder, so a cli.ExitCoder
+	// (cli.Exit, OnUsageError result) propagates back unprinted. Print it
+	// ourselves, skipping the empty-string case so a silent cli.Exit("", N)
+	// (e.g. the one handleUsageError returns) does not produce a stray blank
+	// line. We use a direct type assertion rather than errors.As to avoid
+	// matching `*exec.ExitError` and other unrelated types that happen to
+	// satisfy the ExitCoder shape.
 	if coder, ok := err.(cli.ExitCoder); ok {
 		if msg := coder.Error(); msg != "" {
 			fmt.Fprintln(os.Stderr, msg)
@@ -73,6 +76,13 @@ func newApp() *cli.Command {
 		EnableShellCompletion: true,
 		HideHelpCommand:       true,
 		OnUsageError:          handleUsageError,
+		// Disable urfave's default ExitCoder handling so cli.ExitCoder values
+		// (including the silent cli.Exit("", 1) returned by handleUsageError)
+		// propagate back to main() instead of being printed by HandleExitCoder.
+		// Setting this on the root is sufficient: Command.handleExitCoder
+		// recurses to the parent until it reaches the root and only the root's
+		// ExitErrHandler is invoked, so per-subcommand handlers are ignored.
+		ExitErrHandler: func(context.Context, *cli.Command, error) {},
 		Commands: []*cli.Command{
 			cmdInit(),
 			cmdAdd(),

@@ -108,20 +108,19 @@ func TestHelp_UnknownTopic(t *testing.T) {
 }
 
 func TestUsageError_NoDuplicateMessage(t *testing.T) {
-	// `gw add --from` without a value used to print the urfave "Incorrect Usage"
-	// line and then have main.go re-print the underlying error. Verify the
-	// error message body appears at most once on stderr.
+	// Anchor on the exact line shape (single body line, single trailing
+	// newline). A body-only Count or HasPrefix check would still pass against
+	// the failure mode where urfave's default HandleExitCoder Fprintln's the
+	// silent cli.Exit("", 1) that handleUsageError returns, appending a second
+	// "\n" and producing a stray blank line after "Incorrect Usage: ...".
 	repo := testutil.NewTestRepo(t)
 	_, stderr, exitCode := runGw(t, repo.Root, "add", "--from")
 	if exitCode == 0 {
 		t.Fatal("expected non-zero exit code for missing flag value")
 	}
-	body := "flag needs an argument: --from"
-	if got := strings.Count(stderr, body); got != 1 {
-		t.Errorf("expected %q to appear exactly once in stderr, got %d:\n%s", body, got, stderr)
-	}
-	if !strings.HasPrefix(stderr, "Incorrect Usage: ") {
-		t.Errorf("stderr should start with 'Incorrect Usage:', got: %q", stderr)
+	want := "Incorrect Usage: flag needs an argument: --from\n"
+	if stderr != want {
+		t.Errorf("stderr should be exactly %q, got %q", want, stderr)
 	}
 }
 
