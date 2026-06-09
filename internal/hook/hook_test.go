@@ -36,7 +36,17 @@ func TestRun_HookNotExecutable(t *testing.T) {
 
 	err := hook.Run(repo.Root, hook.PreAdd, "/some/path", "main", &bytes.Buffer{})
 	if err == nil {
-		t.Error("expected error for non-executable hook")
+		t.Fatal("expected error for non-executable hook")
+	}
+	// Pin the actionable parts of the error message: the absolute hook path
+	// (so the user knows which file to fix) and the chmod hint.
+	hookPath := filepath.Join(repo.Root, ".gw", "hooks", "pre-add")
+	msg := err.Error()
+	if !strings.Contains(msg, hookPath) {
+		t.Errorf("error %q should mention hook path %q", msg, hookPath)
+	}
+	if !strings.Contains(msg, "chmod +x") {
+		t.Errorf("error %q should hint at chmod +x", msg)
 	}
 }
 
