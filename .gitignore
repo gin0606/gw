@@ -11,6 +11,9 @@
 *.so
 *.dylib
 
+# Locally-built gw binary (CI/tests build their own into a temp dir).
+/gw
+
 # Test binary, built with `go test -c`
 *.test
 
