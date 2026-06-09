@@ -1,6 +1,9 @@
 package pathutil_test
 
 import (
+	"errors"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -108,5 +111,26 @@ func TestValidatePath_NotExists(t *testing.T) {
 	err := pathutil.ValidatePath("/nonexistent/path/that/does/not/exist")
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+// TestValidatePath_StatErrorNotMistakenForMissing ensures that os.Stat errors
+// other than fs.ErrNotExist surface to the caller instead of being swallowed.
+// We trigger ENOTDIR by treating a regular file as if it were a directory in
+// the lookup path.
+func TestValidatePath_StatErrorNotMistakenForMissing(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "not-a-dir")
+	if err := os.WriteFile(file, []byte{}, 0644); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(file, "child")
+
+	err := pathutil.ValidatePath(target)
+	if err == nil {
+		t.Fatal("expected error when Stat fails with non-ENOENT, got nil")
+	}
+	if errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("error should not wrap fs.ErrNotExist, got %v", err)
 	}
 }

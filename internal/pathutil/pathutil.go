@@ -1,7 +1,9 @@
 package pathutil
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,8 +44,12 @@ func ComputePath(baseDir, branch string) (string, error) {
 
 // ValidatePath checks that the target directory does not already exist.
 func ValidatePath(path string) error {
-	if _, err := os.Stat(path); err == nil {
+	_, err := os.Stat(path)
+	if err == nil {
 		return fmt.Errorf("directory already exists: %s", path)
+	}
+	if !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("validate path %s: %w", path, err)
 	}
 	return nil
 }
