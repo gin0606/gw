@@ -7,7 +7,7 @@ import (
 	"github.com/gin0606/gw/internal/git"
 )
 
-// List implements the "gw list" command.
+// List prints the path of every worktree registered in the current repository, one per line.
 func List() error {
 	cwd, err := os.Getwd()
 	if err != nil {

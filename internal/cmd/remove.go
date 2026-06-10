@@ -12,7 +12,9 @@ import (
 	"github.com/gin0606/gw/internal/hook"
 )
 
-// Remove implements the "gw rm" command.
+// Remove deletes the worktree at path via `git worktree remove`, running
+// pre/post-remove hooks unless noHooks is set. force passes --force to git
+// and downgrades pre-remove hook failures to warnings.
 func Remove(path string, force, noHooks bool) error {
 	// EvalSymlinks failures are deferred: a registered worktree whose on-disk
 	// path is broken (parent gone, replaced by a file, etc.) must still match

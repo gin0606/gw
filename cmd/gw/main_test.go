@@ -54,8 +54,6 @@ func runGw(t *testing.T, dir string, args ...string) (stdout, stderr string, exi
 	return outBuf.String(), errBuf.String(), exitCode
 }
 
-// --- CLI skeleton ---
-
 func TestNoArgs(t *testing.T) {
 	stdout, _, exitCode := runGw(t, t.TempDir())
 
@@ -86,8 +84,6 @@ func TestVersion(t *testing.T) {
 	}
 }
 
-// --- gw init ---
-
 func TestInit_Basic(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
@@ -105,7 +101,6 @@ func TestInit_Basic(t *testing.T) {
 		t.Errorf("expected initialization message in stderr, got: %q", stderr)
 	}
 
-	// Check .gw/config exists with correct content
 	configPath := filepath.Join(repo.Root, ".gw", "config")
 	configBytes, err := os.ReadFile(configPath)
 	if err != nil {
@@ -119,7 +114,6 @@ func TestInit_Basic(t *testing.T) {
 		t.Errorf("config should contain %q, got: %q", expectedEntry, configContent)
 	}
 
-	// Check .gw/hooks/post-add exists with execute permission
 	hookPath := filepath.Join(repo.Root, ".gw", "hooks", "post-add")
 	info, err := os.Stat(hookPath)
 	if err != nil {
@@ -133,7 +127,6 @@ func TestInit_Basic(t *testing.T) {
 func TestInit_AlreadyExists(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
-	// Create .gw/ directory
 	if err := os.MkdirAll(filepath.Join(repo.Root, ".gw"), 0755); err != nil {
 		t.Fatal(err)
 	}
@@ -189,8 +182,6 @@ func TestInit_FromWorktree(t *testing.T) {
 		t.Error(".gw/ should not be created in worktree directory")
 	}
 }
-
-// --- gw add ---
 
 func TestAdd_NewBranch(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
@@ -457,19 +448,15 @@ func TestAdd_ExistingBranch_WithFrom_PreAddNotExecuted(t *testing.T) {
 	}
 }
 
-// --- gw list ---
-
 func TestList_Basic(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
-	// Create a worktree
 	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/list-test")
 	if exitCode != 0 {
 		t.Fatalf("gw add exit code = %d, want 0", exitCode)
 	}
 	wtPath := strings.TrimSpace(addStdout)
 
-	// List worktrees
 	stdout, _, exitCode := runGw(t, repo.Root, "list")
 
 	if exitCode != 0 {
@@ -576,31 +563,25 @@ func TestList_OutsideGitRepo(t *testing.T) {
 	}
 }
 
-// --- gw rm ---
-
 func TestRm_Basic(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
-	// Create a worktree
 	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/rm-test")
 	if exitCode != 0 {
 		t.Fatalf("gw add exit code = %d, want 0", exitCode)
 	}
 	wtPath := strings.TrimSpace(addStdout)
 
-	// Remove it
 	stdout, _, exitCode := runGw(t, repo.Root, "rm", wtPath)
 
 	if exitCode != 0 {
 		t.Errorf("exit code = %d, want 0", exitCode)
 	}
 
-	// stdout should be empty
 	if strings.TrimSpace(stdout) != "" {
 		t.Errorf("expected empty stdout, got: %q", stdout)
 	}
 
-	// Worktree directory should be gone
 	if _, err := os.Stat(wtPath); !os.IsNotExist(err) {
 		t.Errorf("worktree directory should have been removed: %s", wtPath)
 	}
@@ -609,7 +590,6 @@ func TestRm_Basic(t *testing.T) {
 func TestRm_UncommittedChanges_WithoutForce(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
-	// Create a worktree
 	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/dirty-no-force")
 	if exitCode != 0 {
 		t.Fatalf("gw add exit code = %d, want 0", exitCode)
@@ -642,7 +622,6 @@ func TestRm_UncommittedChanges_WithoutForce(t *testing.T) {
 func TestRm_Force_UncommittedChanges(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
-	// Create a worktree
 	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/force-rm")
 	if exitCode != 0 {
 		t.Fatalf("gw add exit code = %d, want 0", exitCode)
@@ -659,14 +638,12 @@ func TestRm_Force_UncommittedChanges(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Remove with --force
 	_, _, exitCode = runGw(t, repo.Root, "rm", wtPath, "--force")
 
 	if exitCode != 0 {
 		t.Errorf("exit code = %d, want 0", exitCode)
 	}
 
-	// Worktree directory should be gone
 	if _, err := os.Stat(wtPath); !os.IsNotExist(err) {
 		t.Errorf("worktree directory should have been removed: %s", wtPath)
 	}
@@ -675,7 +652,6 @@ func TestRm_Force_UncommittedChanges(t *testing.T) {
 func TestRm_PreRemoveHook_Failure_NoForce(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
-	// Create a worktree
 	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/hook-rm")
 	if exitCode != 0 {
 		t.Fatalf("gw add exit code = %d, want 0", exitCode)
@@ -685,7 +661,6 @@ func TestRm_PreRemoveHook_Failure_NoForce(t *testing.T) {
 	// Set up failing pre-remove hook
 	repo.WriteHook("pre-remove", "#!/bin/sh\nexit 1\n")
 
-	// Try to remove
 	_, _, exitCode = runGw(t, repo.Root, "rm", wtPath)
 
 	if exitCode != 1 {
@@ -701,7 +676,6 @@ func TestRm_PreRemoveHook_Failure_NoForce(t *testing.T) {
 func TestRm_PreRemoveHook_Failure_WithForce(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
-	// Create a worktree
 	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/hook-force-rm")
 	if exitCode != 0 {
 		t.Fatalf("gw add exit code = %d, want 0", exitCode)
@@ -711,7 +685,6 @@ func TestRm_PreRemoveHook_Failure_WithForce(t *testing.T) {
 	// Set up failing pre-remove hook
 	repo.WriteHook("pre-remove", "#!/bin/sh\nexit 1\n")
 
-	// Remove with --force
 	_, stderr, exitCode := runGw(t, repo.Root, "rm", wtPath, "--force")
 
 	if exitCode != 0 {
@@ -722,7 +695,6 @@ func TestRm_PreRemoveHook_Failure_WithForce(t *testing.T) {
 		t.Errorf("expected warning in stderr, got: %q", stderr)
 	}
 
-	// Worktree should be gone
 	if _, err := os.Stat(wtPath); !os.IsNotExist(err) {
 		t.Errorf("worktree directory should have been removed: %s", wtPath)
 	}
@@ -731,7 +703,6 @@ func TestRm_PreRemoveHook_Failure_WithForce(t *testing.T) {
 func TestRm_PostRemoveHook_Failure(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
-	// Create a worktree
 	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/post-rm")
 	if exitCode != 0 {
 		t.Fatalf("gw add exit code = %d, want 0", exitCode)
@@ -741,7 +712,6 @@ func TestRm_PostRemoveHook_Failure(t *testing.T) {
 	// Set up failing post-remove hook
 	repo.WriteHook("post-remove", "#!/bin/sh\nexit 1\n")
 
-	// Remove
 	_, stderr, exitCode := runGw(t, repo.Root, "rm", wtPath)
 
 	if exitCode != 0 {
@@ -752,7 +722,6 @@ func TestRm_PostRemoveHook_Failure(t *testing.T) {
 		t.Errorf("expected warning in stderr, got: %q", stderr)
 	}
 
-	// Worktree should be gone
 	if _, err := os.Stat(wtPath); !os.IsNotExist(err) {
 		t.Errorf("worktree directory should have been removed: %s", wtPath)
 	}
@@ -830,14 +799,12 @@ func TestRm_SymlinkResolutionError_NotMistakenForMissing(t *testing.T) {
 func TestRm_BranchSurvives(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
-	// Create a worktree
 	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/branch-survives")
 	if exitCode != 0 {
 		t.Fatalf("gw add exit code = %d, want 0", exitCode)
 	}
 	wtPath := strings.TrimSpace(addStdout)
 
-	// Remove it
 	_, _, exitCode = runGw(t, repo.Root, "rm", wtPath)
 	if exitCode != 0 {
 		t.Fatalf("gw rm exit code = %d, want 0", exitCode)
@@ -854,14 +821,12 @@ func TestRm_BranchSurvives(t *testing.T) {
 func TestRm_EmptyStdout(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
-	// Create a worktree
 	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/empty-stdout")
 	if exitCode != 0 {
 		t.Fatalf("gw add exit code = %d, want 0", exitCode)
 	}
 	wtPath := strings.TrimSpace(addStdout)
 
-	// Remove it
 	stdout, _, exitCode := runGw(t, repo.Root, "rm", wtPath)
 	if exitCode != 0 {
 		t.Fatalf("gw rm exit code = %d, want 0", exitCode)
@@ -924,7 +889,6 @@ func TestRm_ExtraArgs(t *testing.T) {
 func TestRm_ForceFlagBeforePath(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
-	// Create a worktree
 	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/flag-order")
 	if exitCode != 0 {
 		t.Fatalf("gw add exit code = %d, want 0", exitCode)
@@ -938,7 +902,6 @@ func TestRm_ForceFlagBeforePath(t *testing.T) {
 		t.Errorf("exit code = %d, want 0", exitCode)
 	}
 
-	// Worktree directory should be gone
 	if _, err := os.Stat(wtPath); !os.IsNotExist(err) {
 		t.Errorf("worktree directory should have been removed: %s", wtPath)
 	}
@@ -947,7 +910,6 @@ func TestRm_ForceFlagBeforePath(t *testing.T) {
 func TestRm_FromWorktree(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
-	// Create two worktrees
 	addStdout1, _, exitCode := runGw(t, repo.Root, "add", "feature/rm-source")
 	if exitCode != 0 {
 		t.Fatalf("gw add exit code = %d, want 0", exitCode)
@@ -967,7 +929,6 @@ func TestRm_FromWorktree(t *testing.T) {
 		t.Errorf("exit code = %d, want 0", exitCode)
 	}
 
-	// Target worktree should be gone
 	if _, err := os.Stat(targetPath); !os.IsNotExist(err) {
 		t.Errorf("worktree directory should have been removed: %s", targetPath)
 	}
@@ -976,14 +937,12 @@ func TestRm_FromWorktree(t *testing.T) {
 func TestRm_RelativePath(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
-	// Create a worktree
 	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/rel-path")
 	if exitCode != 0 {
 		t.Fatalf("gw add exit code = %d, want 0", exitCode)
 	}
 	wtPath := strings.TrimSpace(addStdout)
 
-	// Compute relative path from repo root to the worktree
 	relPath, err := filepath.Rel(repo.Root, wtPath)
 	if err != nil {
 		t.Fatal(err)
@@ -996,7 +955,6 @@ func TestRm_RelativePath(t *testing.T) {
 		t.Errorf("exit code = %d, want 0", exitCode)
 	}
 
-	// Worktree directory should be gone
 	if _, err := os.Stat(wtPath); !os.IsNotExist(err) {
 		t.Errorf("worktree directory should have been removed: %s", wtPath)
 	}
@@ -1005,7 +963,6 @@ func TestRm_RelativePath(t *testing.T) {
 func TestRm_StaleWorktree(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
-	// Create a worktree
 	addStdout, _, exitCode := runGw(t, repo.Root, "add", "feature/stale")
 	if exitCode != 0 {
 		t.Fatalf("gw add exit code = %d, want 0", exitCode)
@@ -1073,8 +1030,6 @@ func TestRm_ForceOnly_NoPath(t *testing.T) {
 		t.Errorf("expected 'path required' in stderr, got: %q", stderr)
 	}
 }
-
-// --- shell completion ---
 
 func TestCompletion_Add_Branches(t *testing.T) {
 	repo := testutil.NewTestRepo(t)

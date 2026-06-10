@@ -51,7 +51,7 @@ func NewTestRepo(t *testing.T) *TestRepo {
 	}
 }
 
-// CreateBranch creates a new local branch at the current HEAD.
+// CreateBranch creates a local branch pointing at the current HEAD without checking it out.
 func (r *TestRepo) CreateBranch(name string) {
 	r.t.Helper()
 	gitCmd(r.t, r.Root, "branch", name)

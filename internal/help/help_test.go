@@ -103,6 +103,5 @@ func repoRoot(t *testing.T) string {
 	if !ok {
 		t.Fatal("runtime.Caller failed")
 	}
-	// file is .../internal/help/help_test.go; go up three to repo root.
 	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
 }

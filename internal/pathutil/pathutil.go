@@ -10,7 +10,6 @@ import (
 )
 
 // Sanitize converts a branch name to a filesystem-safe directory name.
-// Rules: replace "/" with separatorReplacement, then trim leading/trailing replacement chars.
 func Sanitize(branch string) (string, error) {
 	s := strings.ReplaceAll(branch, "/", separatorReplacement)
 	s = strings.Trim(s, separatorReplacement)

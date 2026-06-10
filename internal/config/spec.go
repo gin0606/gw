@@ -1,6 +1,4 @@
 package config
 
-// KeyWorktreesDir is the TOML key for the worktree base directory in .gw/config.
-// Use this constant instead of the string literal so renames are caught at
-// compile time.
+// KeyWorktreesDir is the TOML key in .gw/config that selects the worktree base directory.
 const KeyWorktreesDir = "worktrees_dir"

@@ -142,7 +142,6 @@ func TestListLocalBranches_MainOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Should at least contain "main"
 	found := false
 	for _, b := range branches {
 		if b == "main" {

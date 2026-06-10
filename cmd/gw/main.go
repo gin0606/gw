@@ -258,10 +258,8 @@ const helpDescription = `Show help for a command or topic.
 // self-referential.
 var helpAllExcluded = map[string]bool{"help": true, "completion": true}
 
-// helpAllCommandsOf returns the user-facing subcommands of root in display
-// order, deriving the list from root.Commands so it cannot drift from the
-// commands actually registered. Hidden commands and the ones listed in
-// helpAllExcluded are filtered out.
+// helpAllCommandsOf derives the user-facing subcommand list from
+// root.Commands so it cannot drift from the commands actually registered.
 func helpAllCommandsOf(root *cli.Command) []*cli.Command {
 	var out []*cli.Command
 	for _, sub := range root.Commands {

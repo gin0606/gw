@@ -10,14 +10,11 @@ import (
 	"path/filepath"
 )
 
-// Run executes a hook script if it exists. The hook's working directory is
-// derived from name (see Name.cwd), so callers only supply repoRoot and the
-// worktree path; the hook-vs-cwd mapping is not duplicated at every call
-// site.
-//
-// A missing hook file is a no-op and returns nil. A hook file that exists
-// but lacks the executable bit returns an error (it is not silently
-// skipped). Hook stdout and stderr are both written to output.
+// Run executes the hook script at .gw/hooks/<name> with cwd derived from
+// name (see Name.cwd). A missing hook file is a no-op; a hook that exists
+// but lacks the executable bit returns an error rather than being silently
+// skipped, so typos in hook filenames surface loudly. Hook stdout and
+// stderr are both written to output.
 func Run(repoRoot string, name Name, worktreePath, branch string, output io.Writer) error {
 	hookPath := filepath.Join(repoRoot, ".gw", "hooks", string(name))
 

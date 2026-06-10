@@ -11,13 +11,11 @@ import (
 )
 
 func completeAdd(ctx context.Context, cmd *cli.Command) {
-	// No completion outside a git repository
 	repoRoot, err := git.RepoRoot(".")
 	if err != nil {
 		return
 	}
 
-	// Check the last argument before --generate-shell-completion
 	args := os.Args
 	prev := ""
 	for i, a := range args {
@@ -43,7 +41,6 @@ func completeAdd(ctx context.Context, cmd *cli.Command) {
 		return
 	}
 
-	// Positional argument already provided; no further completion needed
 	if cmd.NArg() > 0 {
 		return
 	}
@@ -58,7 +55,6 @@ func completeAdd(ctx context.Context, cmd *cli.Command) {
 }
 
 func completeRemove(ctx context.Context, cmd *cli.Command) {
-	// No completion outside a git repository
 	repoRoot, err := git.RepoRoot(".")
 	if err != nil {
 		return
@@ -79,7 +75,6 @@ func completeRemove(ctx context.Context, cmd *cli.Command) {
 		return
 	}
 
-	// Positional argument already provided; no further completion needed
 	if cmd.NArg() > 0 {
 		return
 	}
@@ -89,7 +84,7 @@ func completeRemove(ctx context.Context, cmd *cli.Command) {
 		return
 	}
 
-	// Skip the first worktree (main worktree)
+	// The main worktree (index 0) cannot be removed via gw rm, so exclude it from completions.
 	for _, wt := range worktrees[1:] {
 		fmt.Fprintln(cmd.Root().Writer, wt.Path)
 	}

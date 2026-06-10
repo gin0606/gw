@@ -14,7 +14,9 @@ import (
 	"github.com/gin0606/gw/internal/pathutil"
 )
 
-// Init implements the "gw init" command.
+// Init scaffolds .gw/config and .gw/hooks/ templates at the repository root.
+// Refuses to run if .gw/ already exists so existing user customizations are
+// never clobbered.
 func Init() error {
 	cwd, err := os.Getwd()
 	if err != nil {

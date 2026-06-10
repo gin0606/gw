@@ -26,7 +26,6 @@ func RepoRoot(dir string) (string, error) {
 
 	gitCommonDir = filepath.Clean(gitCommonDir)
 
-	// Resolve symlinks for consistent path representation
 	gitCommonDir, err = filepath.EvalSymlinks(gitCommonDir)
 	if err != nil {
 		return "", err
@@ -83,7 +82,8 @@ func RemoteRefExists(repoRoot, ref string) (bool, error) {
 	return false, err
 }
 
-// RepoName returns the repository name (basename of the repo root).
+// RepoName returns the basename of repoRoot, used as the repository
+// identifier for worktree path computation.
 func RepoName(repoRoot string) string {
 	return filepath.Base(repoRoot)
 }

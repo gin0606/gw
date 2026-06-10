@@ -1,13 +1,11 @@
 package pathutil
 
-// separatorReplacement is the character that "/" in branch names is replaced
-// with when computing the worktree directory name. It must remain a single
-// character: Sanitize passes it to strings.Trim as a cutset, which treats
-// each rune independently, so a multi-character value would silently change
-// the trim semantics. It is unexported because changing this constant alone
-// is not enough: `internal/help/topics/path.txt` and the README examples
-// hard-code "-" and would need to be updated in tandem. The constant exists
-// for readability inside this package only.
+// separatorReplacement is what "/" in branch names becomes in the worktree
+// directory name. Must stay a single character: Sanitize passes it to
+// strings.Trim as a cutset, where each rune is treated independently, so a
+// multi-character value would silently change the trim semantics. Changing
+// it also requires updating internal/help/topics/path.txt and the README,
+// which hard-code "-".
 const separatorReplacement = "-"
 
 // DefaultBaseDirSuffix is appended to the repository name to form the default
