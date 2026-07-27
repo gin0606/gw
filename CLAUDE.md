@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-`gw` is a git worktree wrapper with lifecycle hooks. It runs user scripts before and after worktree creation/removal, and automatically calculates worktree paths from branch names. Go 1.25+, external dependencies are `github.com/BurntSushi/toml` and `github.com/urfave/cli/v3`.
+`gw` is a git worktree wrapper with lifecycle hooks. It runs user scripts before and after worktree creation/removal, and automatically calculates worktree paths from branch names.
 
 ## Design Principles
 
@@ -20,18 +20,6 @@ go build ./cmd/gw/
 ```
 
 ## Architecture
-
-```
-cmd/gw/main.go          Entry point. Parses args and dispatches to subcommands
-cmd/gw/completion.go     Shell completion logic (custom completers for add, rm)
-internal/
-  cmd/                   Subcommand implementations (init, add, rm, list)
-  git/                   Git command wrappers (RepoRoot, BranchExists, ListWorktrees, ListLocalBranches, ListRefs, etc.)
-  config/                Loads .gw/config (TOML)
-  hook/                  Hook execution engine for .gw/hooks/
-  pathutil/              Branch name sanitization and worktree path calculation
-  testutil/              Test helper for creating temporary git repositories
-```
 
 ### Config & Hooks
 
