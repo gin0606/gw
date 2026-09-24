@@ -82,6 +82,33 @@ func RemoteRefExists(repoRoot, ref string) (bool, error) {
 	return false, err
 }
 
+// ResolvesToCommit checks if ref resolves to a commit.
+func ResolvesToCommit(repoRoot, ref string) (bool, error) {
+	// Peel in a separate step: appending ^{commit} to ref itself would
+	// change the meaning of revisions such as :/<regex>.
+	oid, ok, err := verifyRev(repoRoot, "--end-of-options", ref)
+	if err != nil || !ok {
+		return false, err
+	}
+	_, ok, err = verifyRev(repoRoot, oid+"^{commit}")
+	return ok, err
+}
+
+// verifyRev runs "git rev-parse --verify --quiet" and returns the object id.
+func verifyRev(repoRoot string, args ...string) (string, bool, error) {
+	cmd := exec.Command("git", append([]string{"rev-parse", "--verify", "--quiet"}, args...)...)
+	cmd.Dir = repoRoot
+	out, err := cmd.Output()
+	if err == nil {
+		return strings.TrimSpace(string(out)), true, nil
+	}
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return "", false, nil
+	}
+	return "", false, err
+}
+
 // RepoName returns the basename of repoRoot, used as the repository
 // identifier for worktree path computation.
 func RepoName(repoRoot string) string {

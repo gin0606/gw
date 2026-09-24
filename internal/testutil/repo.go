@@ -75,6 +75,42 @@ func (r *TestRepo) DeleteOriginHead() {
 	gitCmd(r.t, r.Root, "remote", "set-head", "origin", "--delete")
 }
 
+// SetOriginHead points origin/HEAD at origin/<branch>, whether or not that ref exists.
+func (r *TestRepo) SetOriginHead(branch string) {
+	r.t.Helper()
+	gitCmd(r.t, r.Root, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/"+branch)
+}
+
+// RevParse returns the object name that rev resolves to.
+func (r *TestRepo) RevParse(rev string) string {
+	r.t.Helper()
+	return gitCmd(r.t, r.Root, "rev-parse", "--verify", rev)
+}
+
+// Commit creates an empty commit on the currently checked-out branch.
+func (r *TestRepo) Commit(msg string) {
+	r.t.Helper()
+	gitCmd(r.t, r.Root, "commit", "--allow-empty", "-m", msg)
+}
+
+// Checkout checks out a branch in the main worktree.
+func (r *TestRepo) Checkout(branch string) {
+	r.t.Helper()
+	gitCmd(r.t, r.Root, "checkout", "-q", branch)
+}
+
+// DeleteBranch force-deletes a local branch.
+func (r *TestRepo) DeleteBranch(name string) {
+	r.t.Helper()
+	gitCmd(r.t, r.Root, "branch", "-D", name)
+}
+
+// ConfigValue returns the value of a git config key; the key must be set.
+func (r *TestRepo) ConfigValue(key string) string {
+	r.t.Helper()
+	return gitCmd(r.t, r.Root, "config", "--get", key)
+}
+
 // DeleteRemoteRef deletes a remote tracking ref (e.g., "origin/main").
 func (r *TestRepo) DeleteRemoteRef(ref string) {
 	r.t.Helper()

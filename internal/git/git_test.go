@@ -1,6 +1,7 @@
 package git_test
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/gin0606/gw/internal/git"
@@ -108,6 +109,48 @@ func TestRemoteRefExists_NotExists(t *testing.T) {
 	}
 	if exists {
 		t.Error("expected remote ref not to exist")
+	}
+}
+
+func TestResolvesToCommit(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	repo.CreateTag("v1")
+	repo.Commit("second commit marker")
+	head := repo.RevParse("HEAD")
+
+	tests := []struct {
+		ref  string
+		want bool
+	}{
+		{"main", true},
+		{"origin/main", true},
+		{"v1", true},
+		{head, true},
+		{":/second commit marker", true},
+		{":/no such commit message", false},
+		{"main@{99}", false},
+		{"nonexistent", false},
+		{"origin/nonexistent", false},
+		{"HEAD^{tree}", false},
+		{"--help", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.ref, func(t *testing.T) {
+			got, err := git.ResolvesToCommit(repo.Root, tt.ref)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tt.want {
+				t.Errorf("ResolvesToCommit(%q) = %v, want %v", tt.ref, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestResolvesToCommit_GitCannotRun(t *testing.T) {
+	_, err := git.ResolvesToCommit(filepath.Join(t.TempDir(), "missing"), "main")
+	if err == nil {
+		t.Error("expected error when git cannot be started")
 	}
 }
 

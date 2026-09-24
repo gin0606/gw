@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gin0606/gw/internal/git"
+	"github.com/gin0606/gw/internal/pathutil"
 	"github.com/gin0606/gw/internal/testutil"
 )
 
@@ -193,11 +195,17 @@ func TestInit_FromWorktree(t *testing.T) {
 
 func TestAdd_NewBranch(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
+	// Local main is ahead of origin/main; the default start point is origin/main.
+	repo.Commit("local only")
 
 	stdout, _, exitCode := runGw(t, repo.Root, "add", "feature/new")
 
 	if exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0", exitCode)
+	}
+
+	if got, want := repo.RevParse("refs/heads/feature/new"), repo.RevParse("origin/main"); got != want {
+		t.Errorf("new branch = %s, want origin/main (%s)", got, want)
 	}
 
 	outputPath := strings.TrimSpace(stdout)
@@ -231,6 +239,7 @@ func TestAdd_NewBranch_WithFrom(t *testing.T) {
 
 func TestAdd_NewBranch_NoRemoteDefaultBranch(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
+	repo.Commit("local only")
 	// Delete remote tracking branch but keep origin/HEAD
 	repo.DeleteRemoteRef("origin/main")
 
@@ -238,6 +247,10 @@ func TestAdd_NewBranch_NoRemoteDefaultBranch(t *testing.T) {
 
 	if exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0", exitCode)
+	}
+
+	if got, want := repo.RevParse("refs/heads/feature/fallback"), repo.RevParse("refs/heads/main"); got != want {
+		t.Errorf("new branch = %s, want local main (%s)", got, want)
 	}
 
 	outputPath := strings.TrimSpace(stdout)
@@ -590,6 +603,135 @@ func TestAdd_WorktreesDirThroughSymlink_PathMatchesGit(t *testing.T) {
 	}
 	if got := recorded("post-add"); got != want {
 		t.Errorf("post-add GW_WORKTREE_PATH = %q, want %q", got, want)
+	}
+}
+
+// assertAddRejectedBeforeHook runs "gw add" with a pre-add hook installed and
+// checks that it fails without running the hook, creating the worktree, or
+// creating the branch, and that stderr mentions wantInStderr.
+func assertAddRejectedBeforeHook(t *testing.T, repo *testutil.TestRepo, branch, wantInStderr string, args ...string) {
+	t.Helper()
+
+	markerFile := filepath.Join(t.TempDir(), "hook-ran.txt")
+	repo.WriteHook("pre-add", "#!/bin/sh\ntouch "+markerFile+"\n")
+
+	_, stderr, exitCode := runGw(t, repo.Root, append([]string{"add", branch}, args...)...)
+
+	if exitCode != 1 {
+		t.Errorf("exit code = %d, want 1", exitCode)
+	}
+	if !strings.Contains(stderr, wantInStderr) {
+		t.Errorf("expected %q in stderr, got: %q", wantInStderr, stderr)
+	}
+	if _, err := os.Stat(markerFile); err == nil {
+		t.Error("pre-add hook should not have been executed")
+	}
+
+	baseDir := pathutil.BaseDir(repo.Root, filepath.Base(repo.Root), "")
+	wtPath, err := pathutil.ComputePath(baseDir, branch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(wtPath); err == nil {
+		t.Errorf("worktree directory should not have been created: %s", wtPath)
+	}
+	if _, err := os.Stat(baseDir); err == nil {
+		t.Errorf("base directory should not have been created: %s", baseDir)
+	}
+
+	exists, err := git.BranchExists(repo.Root, branch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exists {
+		t.Errorf("branch %q should not have been created", branch)
+	}
+}
+
+func TestAdd_NewBranch_FromUnresolvable_PreAddNotExecuted(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	assertAddRejectedBeforeHook(t, repo, "feature/bad-from", "start point 'nonexistent-ref' is not a valid commit", "--from", "nonexistent-ref")
+}
+
+func TestAdd_NewBranch_DefaultBranchUnresolvable_PreAddNotExecuted(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	// origin/HEAD is set, but neither origin/develop nor a local develop exists.
+	repo.SetOriginHead("develop")
+
+	assertAddRejectedBeforeHook(t, repo, "feature/no-default", "default start point 'develop' (from origin/HEAD) is not a valid commit; pass --from <ref> to choose one")
+}
+
+func TestAdd_NewBranch_FromRemoteRef(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	repo.Commit("remote-only commit")
+	repo.CreateBranch("remote-only")
+	repo.PushBranch("remote-only")
+	repo.DeleteBranch("remote-only")
+	want := repo.RevParse("origin/remote-only")
+	if want == repo.RevParse("origin/main") {
+		t.Fatal("test setup: origin/remote-only must differ from origin/main")
+	}
+
+	stdout, stderr, exitCode := runGw(t, repo.Root, "add", "feature/from-remote", "--from", "origin/remote-only")
+
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", exitCode, stderr)
+	}
+	if _, err := os.Stat(strings.TrimSpace(stdout)); os.IsNotExist(err) {
+		t.Errorf("worktree directory was not created: %s", stdout)
+	}
+	if got := repo.RevParse("refs/heads/feature/from-remote"); got != want {
+		t.Errorf("new branch = %s, want %s", got, want)
+	}
+	// Upstream tracking is set only when git receives the remote ref name.
+	if got := repo.ConfigValue("branch.feature/from-remote.remote"); got != "origin" {
+		t.Errorf("branch.<new>.remote = %q, want %q", got, "origin")
+	}
+	if got := repo.ConfigValue("branch.feature/from-remote.merge"); got != "refs/heads/remote-only" {
+		t.Errorf("branch.<new>.merge = %q, want %q", got, "refs/heads/remote-only")
+	}
+}
+
+func TestAdd_NewBranch_FromCommitHash(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	repo.Commit("local only")
+	head := repo.RevParse("HEAD")
+	if head == repo.RevParse("origin/main") {
+		t.Fatal("test setup: HEAD must differ from origin/main")
+	}
+
+	stdout, stderr, exitCode := runGw(t, repo.Root, "add", "feature/from-hash", "--from", head)
+
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", exitCode, stderr)
+	}
+	if _, err := os.Stat(strings.TrimSpace(stdout)); os.IsNotExist(err) {
+		t.Errorf("worktree directory was not created: %s", stdout)
+	}
+	if got := repo.RevParse("refs/heads/feature/from-hash"); got != head {
+		t.Errorf("new branch = %s, want %s", got, head)
+	}
+}
+
+func TestAdd_NewBranch_FromDash(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	repo.CreateBranch("prev")
+	repo.Checkout("prev")
+	repo.Commit("prev commit")
+	repo.Checkout("main")
+	want := repo.RevParse("refs/heads/prev")
+	if want == repo.RevParse("refs/heads/main") {
+		t.Fatal("test setup: prev must differ from main")
+	}
+
+	_, stderr, exitCode := runGw(t, repo.Root, "add", "feature/from-dash", "--from", "-")
+
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", exitCode, stderr)
+	}
+	if got := repo.RevParse("refs/heads/feature/from-dash"); got != want {
+		t.Errorf("new branch = %s, want prev (%s)", got, want)
 	}
 }
 

@@ -64,10 +64,8 @@ func Add(branch, from string, noHooks bool) error {
 
 	var gitArgs []string
 	if !exists {
-		gitArgs = []string{"worktree", "add", wtPath, "-b", branch}
-		if from != "" {
-			gitArgs = append(gitArgs, from)
-		} else {
+		start := from
+		if start == "" {
 			defaultBranch, err := git.DefaultBranch(repoRoot)
 			if err != nil {
 				return err
@@ -80,11 +78,29 @@ func Add(branch, from string, noHooks bool) error {
 			}
 
 			if remoteExists {
-				gitArgs = append(gitArgs, remoteRef)
+				start = remoteRef
 			} else {
-				gitArgs = append(gitArgs, defaultBranch)
+				start = defaultBranch
 			}
 		}
+
+		checkRef := start
+		if start == "-" {
+			// git worktree add treats a "-" start point as @{-1}.
+			checkRef = "@{-1}"
+		}
+		resolves, err := git.ResolvesToCommit(repoRoot, checkRef)
+		if err != nil {
+			return err
+		}
+		if !resolves {
+			if from != "" {
+				return fmt.Errorf("start point '%s' is not a valid commit", start)
+			}
+			return fmt.Errorf("default start point '%s' (from origin/HEAD) is not a valid commit; pass --from <ref> to choose one", start)
+		}
+
+		gitArgs = []string{"worktree", "add", wtPath, "-b", branch, start}
 	} else {
 		gitArgs = []string{"worktree", "add", wtPath, branch}
 	}
