@@ -17,7 +17,7 @@
 **共通ルール:** 各コマンドは定義されていない引数・オプションが渡された場合はエラーとする。
 
 - `gw init` — `.gw/` ディレクトリと初期ファイルを作成する。
-- `gw add <branch>` — worktree を作成し、作成先パスを stdout に出力する。出力するパスは git が登録したパス（シンボリックリンク解決済み）で、`gw list` の出力と一致する。
+- `gw add <branch>` — worktree を作成し、作成先パスを stdout に出力する。出力するパスは git が登録したパス（シンボリックリンク解決済み）で、`gw list` の出力と一致する。`--from` なしで作成する新規ブランチには upstream を設定しない（`--no-track`）。`--from` 指定時は git の通常の挙動に従う。
 - `gw rm <path>` — worktree をパス指定で削除する。ブランチは削除しない（`git worktree remove` 準拠）。
 - `gw list` — worktree の一覧を出力する。
 - `gw completion bash|zsh|fish` — シェル補完スクリプトを生成する。

@@ -124,6 +124,30 @@ func (r *TestRepo) ConfigValue(key string) string {
 	return gitCmd(r.t, r.Root, "config", "--get", key)
 }
 
+// SetConfig sets a git config key in the repository's local config.
+func (r *TestRepo) SetConfig(key, value string) {
+	r.t.Helper()
+	gitCmd(r.t, r.Root, "config", key, value)
+}
+
+// ConfigIsSet reports whether a git config key is set.
+func (r *TestRepo) ConfigIsSet(key string) bool {
+	r.t.Helper()
+	cmd := exec.Command("git", "config", "--get", key)
+	cmd.Dir = r.Root
+	cmd.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_CONFIG_NOSYSTEM=1")
+	err := cmd.Run()
+	if err == nil {
+		return true
+	}
+	// git config --get exits 1 when the key is not set.
+	if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+		return false
+	}
+	r.t.Fatalf("git config --get %s: %v", key, err)
+	return false
+}
+
 // DeleteRemoteRef deletes a remote tracking ref (e.g., "origin/main").
 func (r *TestRepo) DeleteRemoteRef(ref string) {
 	r.t.Helper()

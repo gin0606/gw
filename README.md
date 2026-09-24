@@ -46,7 +46,7 @@ Coding agents can read the entire reference with `gw help all`.
 ## Commands
 
 - **`gw init`** — Initialize `.gw/` directory with default configuration and hook templates.
-- **`gw add <branch> [--from <ref>]`** — Create a new worktree. The path is calculated from the branch name and printed to stdout. When `--from` is omitted and the branch does not exist, it is created from `origin/<default branch>`.
+- **`gw add <branch> [--from <ref>]`** — Create a new worktree. The path is calculated from the branch name and printed to stdout. When `--from` is omitted and the branch does not exist, it is created from `origin/<default branch>`. It gets no upstream; pass --from to let git's usual tracking rules apply.
 - **`gw rm <path> [--force]`** — Remove a worktree by its path (absolute or relative). Use `--force` to remove even with uncommitted changes.
 - **`gw list`** — Print the absolute path of each worktree, one per line.
 

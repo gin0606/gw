@@ -112,7 +112,12 @@ func Add(branch, from string, noHooks bool) error {
 			start = fullName
 		}
 
-		gitArgs = []string{"worktree", "add", wtPath, "-b", branch, "--end-of-options", start}
+		gitArgs = []string{"worktree", "add", wtPath, "-b", branch}
+		if from == "" {
+			// The user did not choose the implicit start point, so it must not become the upstream.
+			gitArgs = append(gitArgs, "--no-track")
+		}
+		gitArgs = append(gitArgs, "--end-of-options", start)
 	} else {
 		gitArgs = []string{"worktree", "add", wtPath, branch}
 	}

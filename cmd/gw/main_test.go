@@ -218,6 +218,64 @@ func TestAdd_NewBranch(t *testing.T) {
 	}
 }
 
+func assertNoUpstream(t *testing.T, repo *testutil.TestRepo, branch string) {
+	t.Helper()
+	for _, key := range []string{"branch." + branch + ".remote", "branch." + branch + ".merge"} {
+		if repo.ConfigIsSet(key) {
+			t.Errorf("%s = %q, want unset", key, repo.ConfigValue(key))
+		}
+	}
+}
+
+func TestAdd_NewBranch_DefaultStartPoint_NoUpstream(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	// Local main is ahead of origin/main; the default start point is origin/main.
+	repo.Commit("local only")
+
+	_, stderr, exitCode := runGw(t, repo.Root, "add", "feature/no-upstream")
+
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", exitCode, stderr)
+	}
+	if got, want := repo.RevParse("refs/heads/feature/no-upstream"), repo.RevParse("origin/main"); got != want {
+		t.Errorf("new branch = %s, want origin/main (%s)", got, want)
+	}
+	assertNoUpstream(t, repo, "feature/no-upstream")
+}
+
+func TestAdd_NewBranch_LocalDefaultFallback_NoUpstream(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	repo.DeleteRemoteRef("origin/main")
+	// "always" makes git track a local start point too.
+	repo.SetConfig("branch.autoSetupMerge", "always")
+
+	_, stderr, exitCode := runGw(t, repo.Root, "add", "feature/no-upstream")
+
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", exitCode, stderr)
+	}
+	if got, want := repo.RevParse("refs/heads/feature/no-upstream"), repo.RevParse("refs/heads/main"); got != want {
+		t.Errorf("new branch = %s, want local main (%s)", got, want)
+	}
+	assertNoUpstream(t, repo, "feature/no-upstream")
+}
+
+func TestAdd_NewBranch_FromDefaultRemoteRef_SetsUpstream(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	_, stderr, exitCode := runGw(t, repo.Root, "add", "feature/tracking", "--from", "origin/main")
+
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", exitCode, stderr)
+	}
+	if got := repo.ConfigValue("branch.feature/tracking.remote"); got != "origin" {
+		t.Errorf("branch.<new>.remote = %q, want %q", got, "origin")
+	}
+	if got := repo.ConfigValue("branch.feature/tracking.merge"); got != "refs/heads/main" {
+		t.Errorf("branch.<new>.merge = %q, want %q", got, "refs/heads/main")
+	}
+}
+
 func TestAdd_NewBranch_WithFrom(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 

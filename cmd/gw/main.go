@@ -142,7 +142,8 @@ Branch resolution:
   requires origin/HEAD to be configured
   ('git remote set-head origin --auto'); otherwise pass --from <ref> to
   choose the start point yourself. Passing --from together with an
-  existing branch is an error.
+  existing branch is an error. A branch created without --from gets no
+  upstream (--no-track); with --from, git's usual tracking rules apply.
 
 Worktree path:
   The path is computed from the branch name and the configured base
