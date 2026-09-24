@@ -148,6 +148,9 @@ func gitCmd(t *testing.T, dir string, args ...string) string {
 		cmd.Dir = dir
 	}
 	cmd.Env = append(os.Environ(),
+		// Isolate from the developer's git config (e.g. tag.gpgSign breaks lightweight tags).
+		"GIT_CONFIG_GLOBAL="+os.DevNull,
+		"GIT_CONFIG_NOSYSTEM=1",
 		"GIT_AUTHOR_NAME=Test",
 		"GIT_AUTHOR_EMAIL=test@test.com",
 		"GIT_COMMITTER_NAME=Test",
