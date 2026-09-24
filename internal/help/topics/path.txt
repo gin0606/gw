@@ -7,15 +7,16 @@ WORKTREE PATH
 
 BASE DIRECTORY
 
-  Resolved in this order, then made absolute:
+  Resolved in this order, then made absolute with symlinks resolved:
 
     1. The `worktrees_dir` key in .gw/config, if set.
-       - Absolute paths are used as-is.
+       - Absolute paths are used directly.
        - Relative paths are resolved against the repository root.
     2. Default: a sibling of the repository named "<repo>-worktrees".
 
-  `gw add` always emits the resolved absolute path to stdout regardless of
-  how the base directory was configured.
+  `gw add` always emits the absolute path git registers (symlinks
+  resolved, same as `gw list`) regardless of how the base directory was
+  configured.
 
 BRANCH NAME SANITIZATION
 

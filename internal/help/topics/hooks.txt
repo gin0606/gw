@@ -37,8 +37,9 @@ HOOKS
 ENVIRONMENT VARIABLES
 
   GW_REPO_ROOT      Absolute path to the main repository root.
-  GW_WORKTREE_PATH  Absolute path to the worktree (existence varies per hook,
-                    see above).
+  GW_WORKTREE_PATH  Absolute path to the worktree as git registers it
+                    (symlinks resolved, same as `gw list`). Existence
+                    varies per hook, see above.
   GW_BRANCH         Branch name, or empty for a detached-HEAD worktree.
 
   In addition to these, the hook inherits the full environment of the `gw`

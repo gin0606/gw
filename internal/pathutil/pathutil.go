@@ -60,3 +60,23 @@ func ValidatePath(path string) error {
 func EnsureBaseDir(baseDir string) error {
 	return os.MkdirAll(baseDir, 0755)
 }
+
+// ResolveExistingPrefix resolves symlinks in the deepest existing ancestor of
+// the absolute path and re-appends the missing components. Errors other than
+// fs.ErrNotExist are returned as-is.
+func ResolveExistingPrefix(path string) (string, error) {
+	var tail []string
+	dir := path
+	for {
+		resolved, err := filepath.EvalSymlinks(dir)
+		if err == nil {
+			return filepath.Join(append([]string{resolved}, tail...)...), nil
+		}
+		parent := filepath.Dir(dir)
+		if !errors.Is(err, fs.ErrNotExist) || parent == dir {
+			return "", err
+		}
+		tail = append([]string{filepath.Base(dir)}, tail...)
+		dir = parent
+	}
+}

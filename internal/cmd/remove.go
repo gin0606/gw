@@ -1,33 +1,30 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 
 	"github.com/gin0606/gw/internal/git"
 	"github.com/gin0606/gw/internal/hook"
+	"github.com/gin0606/gw/internal/pathutil"
 )
 
 // Remove deletes the worktree at path via `git worktree remove`, running
 // pre/post-remove hooks unless noHooks is set. force passes --force to git
 // and downgrades pre-remove hook failures to warnings.
 func Remove(path string, force, noHooks bool) error {
-	// EvalSymlinks failures are deferred: a registered worktree whose on-disk
-	// path is broken (parent gone, replaced by a file, etc.) must still match
-	// git's metadata via the absolute-but-unresolved path so that
-	// `gw rm --force` can clean it up.
-	wtPath, err := filepath.Abs(path)
+	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return err
 	}
-	resolved, evalSymlinksErr := filepath.EvalSymlinks(wtPath)
-	if evalSymlinksErr == nil {
-		wtPath = resolved
-	}
+	// Resolution failures are deferred: a registered worktree whose on-disk
+	// path is broken (parent replaced by a file, etc.) must still match
+	// git's metadata via the unresolved path so `gw rm --force` can clean it
+	// up. The unresolved path is also compared because git may have
+	// registered it before a component was replaced by a symlink.
+	resolved, resolveErr := pathutil.ResolveExistingPrefix(absPath)
 
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -43,23 +40,24 @@ func Remove(path string, force, noHooks bool) error {
 		return err
 	}
 
-	var branch string
+	var wtPath, branch string
 	found := false
 	for _, wt := range worktrees {
-		if wt.Path == wtPath {
+		if (resolveErr == nil && wt.Path == resolved) || wt.Path == absPath {
+			wtPath = wt.Path
 			branch = wt.Branch
 			found = true
 			break
 		}
 	}
 	if !found {
-		// A non-ENOENT EvalSymlinks failure (e.g. ENOTDIR on an intermediate
-		// component) on an unregistered path is a real I/O problem, not a
-		// typo: surface it instead of masking it as "not a git worktree".
-		if evalSymlinksErr != nil && !errors.Is(evalSymlinksErr, fs.ErrNotExist) {
-			return fmt.Errorf("resolve symlinks for %q: %w", wtPath, evalSymlinksErr)
+		// A resolution failure (e.g. ENOTDIR on an intermediate component) on
+		// an unregistered path is a real I/O problem, not a typo: surface it
+		// instead of masking it as "not a git worktree".
+		if resolveErr != nil {
+			return fmt.Errorf("resolve symlinks for %q: %w", absPath, resolveErr)
 		}
-		return fmt.Errorf("path %q is not a git worktree", wtPath)
+		return fmt.Errorf("path %q is not a git worktree", absPath)
 	}
 	if wtPath == repoRoot {
 		return fmt.Errorf("cannot remove the main worktree")

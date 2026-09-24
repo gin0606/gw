@@ -17,7 +17,7 @@
 **共通ルール:** 各コマンドは定義されていない引数・オプションが渡された場合はエラーとする。
 
 - `gw init` — `.gw/` ディレクトリと初期ファイルを作成する。
-- `gw add <branch>` — worktree を作成し、作成先パスを stdout に出力する。
+- `gw add <branch>` — worktree を作成し、作成先パスを stdout に出力する。出力するパスは git が登録したパス（シンボリックリンク解決済み）で、`gw list` の出力と一致する。
 - `gw rm <path>` — worktree をパス指定で削除する。ブランチは削除しない（`git worktree remove` 準拠）。
 - `gw list` — worktree の一覧を出力する。
 - `gw completion bash|zsh|fish` — シェル補完スクリプトを生成する。
@@ -73,7 +73,7 @@ worktree を格納する親ディレクトリ。
 | 変数 | 説明 |
 |---|---|
 | `GW_REPO_ROOT` | メインリポジトリルートの絶対パス |
-| `GW_WORKTREE_PATH` | worktree の絶対パス（`pre-add` フックでは作成予定のパス。ディレクトリはまだ存在しない） |
+| `GW_WORKTREE_PATH` | worktree の絶対パス。git が登録するパス（シンボリックリンク解決済み）で、`gw list` の出力と一致する（`pre-add` フックでは作成予定のパス。ディレクトリはまだ存在しない） |
 | `GW_BRANCH` | ブランチ名 |
 
 ### 3.3 フック実行ルール

@@ -280,6 +280,22 @@ func TestAdd_ExistingBranch_WithFrom_Error(t *testing.T) {
 	}
 }
 
+// A precondition failure must not leave the base directory behind.
+func TestAdd_PreconditionFailure_NoBaseDirCreated(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	repo.CreateBranch("existing-no-basedir")
+
+	_, _, exitCode := runGw(t, repo.Root, "add", "existing-no-basedir", "--from", "main")
+	if exitCode != 1 {
+		t.Fatalf("exit code = %d, want 1", exitCode)
+	}
+
+	baseDir := filepath.Join(filepath.Dir(repo.Root), filepath.Base(repo.Root)+"-worktrees")
+	if _, err := os.Stat(baseDir); !os.IsNotExist(err) {
+		t.Errorf("base directory should not have been created: %s (stat err: %v)", baseDir, err)
+	}
+}
+
 func TestAdd_NoArgs(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
@@ -487,6 +503,93 @@ func TestAdd_ExistingBranch_WithFrom_PreAddNotExecuted(t *testing.T) {
 
 	if _, err := os.Stat(markerFile); err == nil {
 		t.Error("pre-add hook should not have been executed")
+	}
+}
+
+// symlinkedWorktreesDir configures worktrees_dir as an absolute path through
+// a symlink (link -> real) and returns the configured path and the path git
+// is expected to register for it.
+func symlinkedWorktreesDir(t *testing.T, repo *testutil.TestRepo) (configured, resolved string) {
+	t.Helper()
+	// t.TempDir() is deliberately left unresolved: on macOS it is itself
+	// under a symlink (/var -> /private/var).
+	dir := t.TempDir()
+	real := filepath.Join(dir, "real")
+	if err := os.Mkdir(real, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(real, filepath.Join(dir, "link")); err != nil {
+		t.Fatal(err)
+	}
+	realResolved, err := filepath.EvalSymlinks(real)
+	if err != nil {
+		t.Fatal(err)
+	}
+	configured = filepath.Join(dir, "link", "trees")
+	repo.WriteConfig(fmt.Sprintf("worktrees_dir = %q\n", configured))
+	return configured, filepath.Join(realResolved, "trees")
+}
+
+// writePathRecordingHooks installs hooks that write GW_WORKTREE_PATH to
+// <dir>/<hook name> and returns a reader for those recordings.
+func writePathRecordingHooks(t *testing.T, repo *testutil.TestRepo, names ...string) func(name string) string {
+	t.Helper()
+	dir := t.TempDir()
+	for _, name := range names {
+		repo.WriteHook(name, "#!/bin/sh\nprintf '%s' \"$GW_WORKTREE_PATH\" > '"+filepath.Join(dir, name)+"'\n")
+	}
+	return func(name string) string {
+		t.Helper()
+		b, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			t.Fatalf("read %s recording: %v", name, err)
+		}
+		return string(b)
+	}
+}
+
+// listedWorktrees returns the non-main worktree paths printed by `gw list`.
+func listedWorktrees(t *testing.T, repo *testutil.TestRepo) []string {
+	t.Helper()
+	stdout, _, exitCode := runGw(t, repo.Root, "list")
+	if exitCode != 0 {
+		t.Fatalf("gw list exit code = %d, want 0", exitCode)
+	}
+	var paths []string
+	for _, line := range strings.Split(strings.TrimSpace(stdout), "\n") {
+		if line != repo.Root {
+			paths = append(paths, line)
+		}
+	}
+	return paths
+}
+
+func TestAdd_WorktreesDirThroughSymlink_PathMatchesGit(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	_, resolvedBase := symlinkedWorktreesDir(t, repo)
+	recorded := writePathRecordingHooks(t, repo, "pre-add", "post-add")
+
+	stdout, stderr, exitCode := runGw(t, repo.Root, "add", "feature/symlinked")
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", exitCode, stderr)
+	}
+
+	listed := listedWorktrees(t, repo)
+	if len(listed) != 1 {
+		t.Fatalf("expected one worktree in gw list, got: %q", listed)
+	}
+	want := listed[0]
+	if want != filepath.Join(resolvedBase, "feature-symlinked") {
+		t.Errorf("gw list path = %q, want symlink-resolved %q", want, filepath.Join(resolvedBase, "feature-symlinked"))
+	}
+	if got := strings.TrimSpace(stdout); got != want {
+		t.Errorf("gw add stdout = %q, want %q", got, want)
+	}
+	if got := recorded("pre-add"); got != want {
+		t.Errorf("pre-add GW_WORKTREE_PATH = %q, want %q", got, want)
+	}
+	if got := recorded("post-add"); got != want {
+		t.Errorf("post-add GW_WORKTREE_PATH = %q, want %q", got, want)
 	}
 }
 
@@ -813,10 +916,9 @@ func TestRm_NotFound(t *testing.T) {
 	}
 }
 
-// A non-existent path under repo root makes filepath.EvalSymlinks return
-// fs.ErrNotExist, which is folded into "not a git worktree" so a typo in
-// the path argument is reported as a plain missing-worktree error rather
-// than a symlink-resolution failure.
+// A non-existent path under an existing directory resolves via its existing
+// ancestor, so a typo in the path argument is reported as a plain
+// missing-worktree error rather than a symlink-resolution failure.
 func TestRm_NotFound_MissingPath(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
@@ -1082,6 +1184,109 @@ func TestRm_StaleWorktree_ParentReplacedWithFile(t *testing.T) {
 	}
 	if strings.Contains(listStdout, wtPath) {
 		t.Errorf("worktree %q should be cleaned from git metadata, got: %q", wtPath, listStdout)
+	}
+}
+
+func TestRm_WorktreesDirThroughSymlink(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	configuredBase, _ := symlinkedWorktreesDir(t, repo)
+
+	if _, stderr, exitCode := runGw(t, repo.Root, "add", "feature/symlinked-rm"); exitCode != 0 {
+		t.Fatalf("gw add exit code = %d, want 0; stderr: %s", exitCode, stderr)
+	}
+	listed := listedWorktrees(t, repo)
+	if len(listed) != 1 {
+		t.Fatalf("expected one worktree in gw list, got: %q", listed)
+	}
+	want := listed[0]
+	recorded := writePathRecordingHooks(t, repo, "pre-remove", "post-remove")
+
+	_, stderr, exitCode := runGw(t, repo.Root, "rm", filepath.Join(configuredBase, "feature-symlinked-rm"))
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", exitCode, stderr)
+	}
+	if listed := listedWorktrees(t, repo); len(listed) != 0 {
+		t.Errorf("worktree should no longer be listed, got: %q", listed)
+	}
+	if got := recorded("pre-remove"); got != want {
+		t.Errorf("pre-remove GW_WORKTREE_PATH = %q, want %q", got, want)
+	}
+	if got := recorded("post-remove"); got != want {
+		t.Errorf("post-remove GW_WORKTREE_PATH = %q, want %q", got, want)
+	}
+}
+
+// With the worktree directory gone, the path cannot be resolved as a whole;
+// its existing ancestor (through the symlink) must still be resolved so the
+// argument matches the path git registered.
+func TestRm_StaleWorktree_WorktreesDirThroughSymlink(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	configuredBase, _ := symlinkedWorktreesDir(t, repo)
+
+	if _, stderr, exitCode := runGw(t, repo.Root, "add", "feature/symlinked-stale"); exitCode != 0 {
+		t.Fatalf("gw add exit code = %d, want 0; stderr: %s", exitCode, stderr)
+	}
+	listed := listedWorktrees(t, repo)
+	if len(listed) != 1 {
+		t.Fatalf("expected one worktree in gw list, got: %q", listed)
+	}
+	want := listed[0]
+	if err := os.RemoveAll(want); err != nil {
+		t.Fatal(err)
+	}
+	// pre-remove runs inside the (now missing) worktree, so it cannot start;
+	// --force downgrades that to a warning. Only post-remove is checked.
+	recorded := writePathRecordingHooks(t, repo, "post-remove")
+
+	_, stderr, exitCode := runGw(t, repo.Root, "rm", "--force", filepath.Join(configuredBase, "feature-symlinked-stale"))
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", exitCode, stderr)
+	}
+	if listed := listedWorktrees(t, repo); len(listed) != 0 {
+		t.Errorf("worktree should no longer be listed, got: %q", listed)
+	}
+	if got := recorded("post-remove"); got != want {
+		t.Errorf("post-remove GW_WORKTREE_PATH = %q, want %q", got, want)
+	}
+}
+
+// A worktree registered before its base directory was moved behind a symlink
+// resolves to a different path than git registered; the unresolved argument
+// must still match git's registration.
+func TestRm_BaseDirReplacedWithSymlink_RegisteredPath(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	if _, stderr, exitCode := runGw(t, repo.Root, "add", "feature/moved-base"); exitCode != 0 {
+		t.Fatalf("gw add exit code = %d, want 0; stderr: %s", exitCode, stderr)
+	}
+	listed := listedWorktrees(t, repo)
+	if len(listed) != 1 {
+		t.Fatalf("expected one worktree in gw list, got: %q", listed)
+	}
+	registered := listed[0]
+
+	baseDir := filepath.Dir(registered)
+	moved := baseDir + "-moved"
+	if err := os.Rename(baseDir, moved); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(moved, baseDir); err != nil {
+		t.Fatal(err)
+	}
+	recorded := writePathRecordingHooks(t, repo, "pre-remove", "post-remove")
+
+	_, stderr, exitCode := runGw(t, repo.Root, "rm", registered)
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", exitCode, stderr)
+	}
+	if listed := listedWorktrees(t, repo); len(listed) != 0 {
+		t.Errorf("worktree should no longer be listed, got: %q", listed)
+	}
+	if got := recorded("pre-remove"); got != registered {
+		t.Errorf("pre-remove GW_WORKTREE_PATH = %q, want %q", got, registered)
+	}
+	if got := recorded("post-remove"); got != registered {
+		t.Errorf("post-remove GW_WORKTREE_PATH = %q, want %q", got, registered)
 	}
 }
 

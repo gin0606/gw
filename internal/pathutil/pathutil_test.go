@@ -169,3 +169,50 @@ func TestValidatePath_LstatErrorNotMistakenForMissing(t *testing.T) {
 		t.Errorf("error should wrap ENOTDIR, got %v", err)
 	}
 }
+
+func TestResolveExistingPrefix(t *testing.T) {
+	dir := t.TempDir()
+	real := filepath.Join(dir, "real")
+	if err := os.Mkdir(real, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(dir, "link")
+	if err := os.Symlink(real, link); err != nil {
+		t.Fatal(err)
+	}
+	realResolved, err := filepath.EvalSymlinks(real)
+	if err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(dir, "file")
+	if err := os.WriteFile(file, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("existing dir through symlink", func(t *testing.T) {
+		got, err := pathutil.ResolveExistingPrefix(link)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got != realResolved {
+			t.Errorf("got %q, want %q", got, realResolved)
+		}
+	})
+
+	t.Run("missing tail under symlinked ancestor", func(t *testing.T) {
+		got, err := pathutil.ResolveExistingPrefix(filepath.Join(link, "a", "b"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := filepath.Join(realResolved, "a", "b"); got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+
+	t.Run("child of a file", func(t *testing.T) {
+		_, err := pathutil.ResolveExistingPrefix(filepath.Join(file, "child"))
+		if !errors.Is(err, syscall.ENOTDIR) {
+			t.Errorf("err = %v, want ENOTDIR", err)
+		}
+	})
+}
