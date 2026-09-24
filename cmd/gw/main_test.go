@@ -735,6 +735,54 @@ func TestAdd_NewBranch_FromDash(t *testing.T) {
 	}
 }
 
+// These confirm the pre-check rejects option-like start points before git runs.
+func TestAdd_NewBranch_FromOptionLike_Force(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	assertAddRejectedBeforeHook(t, repo, "feature/from-force", "start point '--force' is not a valid commit", "--from=--force")
+}
+
+func TestAdd_NewBranch_FromOptionLike_NoCheckout(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	assertAddRejectedBeforeHook(t, repo, "feature/from-no-checkout", "start point '--no-checkout' is not a valid commit", "--from=--no-checkout")
+}
+
+// A ref named like an option of git worktree add or git branch passes the
+// pre-check and must still be used as the start point.
+func TestAdd_NewBranch_FromRefNamedLikeOption(t *testing.T) {
+	for _, tag := range []string{"--no-checkout", "--force", "-m"} {
+		t.Run(tag, func(t *testing.T) {
+			repo := testutil.NewTestRepo(t)
+			repo.CreateBranch("target")
+			repo.Checkout("target")
+			repo.Commit("target commit")
+			repo.Checkout("main")
+			want := repo.RevParse("refs/heads/target")
+			if want == repo.RevParse("HEAD") {
+				t.Fatal("test setup: target must differ from HEAD")
+			}
+			repo.UpdateRef("refs/tags/"+tag, want)
+
+			stdout, stderr, exitCode := runGw(t, repo.Root, "add", "feature/from-option-named-ref", "--from="+tag)
+
+			if got := repo.SymbolicHead(); got != "refs/heads/main" {
+				t.Errorf("main worktree HEAD = %s, want refs/heads/main", got)
+			}
+
+			if exitCode != 0 {
+				t.Fatalf("exit code = %d, want 0; stderr: %s", exitCode, stderr)
+			}
+			if got := repo.RevParse("refs/heads/feature/from-option-named-ref"); got != want {
+				t.Errorf("new branch = %s, want the %s tag (%s)", got, tag, want)
+			}
+			if _, err := os.Stat(filepath.Join(strings.TrimSpace(stdout), ".gitkeep")); err != nil {
+				t.Errorf("worktree is not checked out: %v", err)
+			}
+		})
+	}
+}
+
 func TestList_Basic(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 

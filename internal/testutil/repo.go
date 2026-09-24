@@ -69,6 +69,13 @@ func (r *TestRepo) CreateTag(name string) {
 	gitCmd(r.t, r.Root, "tag", name)
 }
 
+// UpdateRef points ref at commit, creating the ref if needed. Unlike
+// CreateTag, it accepts ref names that git's porcelain would parse as options.
+func (r *TestRepo) UpdateRef(ref, commit string) {
+	r.t.Helper()
+	gitCmd(r.t, r.Root, "update-ref", ref, commit)
+}
+
 // DeleteOriginHead removes origin/HEAD symbolic ref.
 func (r *TestRepo) DeleteOriginHead() {
 	r.t.Helper()
@@ -103,6 +110,12 @@ func (r *TestRepo) Checkout(branch string) {
 func (r *TestRepo) DeleteBranch(name string) {
 	r.t.Helper()
 	gitCmd(r.t, r.Root, "branch", "-D", name)
+}
+
+// SymbolicHead returns the ref that HEAD of the main worktree points at.
+func (r *TestRepo) SymbolicHead() string {
+	r.t.Helper()
+	return gitCmd(r.t, r.Root, "symbolic-ref", "HEAD")
 }
 
 // ConfigValue returns the value of a git config key; the key must be set.

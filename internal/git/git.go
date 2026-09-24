@@ -94,7 +94,17 @@ func ResolvesToCommit(repoRoot, ref string) (bool, error) {
 	return ok, err
 }
 
-// verifyRev runs "git rev-parse --verify --quiet" and returns the object id.
+// SymbolicFullName returns the full ref name that ref resolves to, such as
+// "refs/heads/main". ok is false when ref does not name a ref.
+func SymbolicFullName(repoRoot, ref string) (string, bool, error) {
+	name, ok, err := verifyRev(repoRoot, "--symbolic-full-name", "--end-of-options", ref)
+	if err != nil || !ok {
+		return "", false, err
+	}
+	return name, name != "", nil
+}
+
+// verifyRev runs "git rev-parse --verify --quiet" and returns its output.
 func verifyRev(repoRoot string, args ...string) (string, bool, error) {
 	cmd := exec.Command("git", append([]string{"rev-parse", "--verify", "--quiet"}, args...)...)
 	cmd.Dir = repoRoot

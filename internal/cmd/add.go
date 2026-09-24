@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/gin0606/gw/internal/config"
 	"github.com/gin0606/gw/internal/git"
@@ -94,13 +95,24 @@ func Add(branch, from string, noHooks bool) error {
 			return err
 		}
 		if !resolves {
-			if from != "" {
-				return fmt.Errorf("start point '%s' is not a valid commit", start)
-			}
-			return fmt.Errorf("default start point '%s' (from origin/HEAD) is not a valid commit; pass --from <ref> to choose one", start)
+			return invalidStartPoint(start, from)
 		}
 
-		gitArgs = []string{"worktree", "add", wtPath, "-b", branch, start}
+		// git worktree add forwards the start point to "git branch" without a
+		// terminator, so a "-"-prefixed ref is passed by its full name. The
+		// --end-of-options below only guards git worktree add's own parser.
+		if start != "-" && strings.HasPrefix(start, "-") {
+			fullName, ok, err := git.SymbolicFullName(repoRoot, start)
+			if err != nil {
+				return err
+			}
+			if !ok {
+				return invalidStartPoint(start, from)
+			}
+			start = fullName
+		}
+
+		gitArgs = []string{"worktree", "add", wtPath, "-b", branch, "--end-of-options", start}
 	} else {
 		gitArgs = []string{"worktree", "add", wtPath, branch}
 	}
@@ -156,4 +168,11 @@ func registeredPath(repoRoot, wtPath, branch string) string {
 		}
 	}
 	return wtPath
+}
+
+func invalidStartPoint(start, from string) error {
+	if from != "" {
+		return fmt.Errorf("start point '%s' is not a valid commit", start)
+	}
+	return fmt.Errorf("default start point '%s' (from origin/HEAD) is not a valid commit; pass --from <ref> to choose one", start)
 }

@@ -154,6 +154,35 @@ func TestResolvesToCommit_GitCannotRun(t *testing.T) {
 	}
 }
 
+func TestSymbolicFullName(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	head := repo.RevParse("HEAD")
+	repo.UpdateRef("refs/tags/--force", head)
+
+	tests := []struct {
+		ref    string
+		want   string
+		wantOK bool
+	}{
+		{"main", "refs/heads/main", true},
+		{"origin/main", "refs/remotes/origin/main", true},
+		{"--force", "refs/tags/--force", true},
+		{head, "", false},
+		{"nonexistent", "", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.ref, func(t *testing.T) {
+			got, ok, err := git.SymbolicFullName(repo.Root, tt.ref)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tt.want || ok != tt.wantOK {
+				t.Errorf("SymbolicFullName(%q) = (%q, %v), want (%q, %v)", tt.ref, got, ok, tt.want, tt.wantOK)
+			}
+		})
+	}
+}
+
 func TestListLocalBranches(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 	repo.CreateBranch("feature-a")
