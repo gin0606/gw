@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 
@@ -108,6 +109,39 @@ func TestValidatePath_Exists(t *testing.T) {
 	}
 }
 
+func TestValidatePath_BrokenSymlink(t *testing.T) {
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(filepath.Join(t.TempDir(), "missing"), link); err != nil {
+		t.Fatal(err)
+	}
+	err := pathutil.ValidatePath(link)
+	if err == nil || !strings.Contains(err.Error(), "already exists") {
+		t.Errorf("expected 'already exists' error for broken symlink, got %v", err)
+	}
+}
+
+func TestValidatePath_SymlinkToDir(t *testing.T) {
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(t.TempDir(), link); err != nil {
+		t.Fatal(err)
+	}
+	err := pathutil.ValidatePath(link)
+	if err == nil || !strings.Contains(err.Error(), "already exists") {
+		t.Errorf("expected 'already exists' error for symlink to existing directory, got %v", err)
+	}
+}
+
+func TestValidatePath_RegularFile(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "file")
+	if err := os.WriteFile(file, []byte{}, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := pathutil.ValidatePath(file)
+	if err == nil || !strings.Contains(err.Error(), "already exists") {
+		t.Errorf("expected 'already exists' error for regular file, got %v", err)
+	}
+}
+
 func TestValidatePath_NotExists(t *testing.T) {
 	err := pathutil.ValidatePath("/nonexistent/path/that/does/not/exist")
 	if err != nil {
@@ -115,9 +149,9 @@ func TestValidatePath_NotExists(t *testing.T) {
 	}
 }
 
-// Stat'ing a path under a regular file fails with ENOTDIR, which is the
+// Lstat'ing a path under a regular file fails with ENOTDIR, which is the
 // canonical non-fs.ErrNotExist failure we must not silently treat as "absent".
-func TestValidatePath_StatErrorNotMistakenForMissing(t *testing.T) {
+func TestValidatePath_LstatErrorNotMistakenForMissing(t *testing.T) {
 	dir := t.TempDir()
 	file := filepath.Join(dir, "not-a-dir")
 	if err := os.WriteFile(file, []byte{}, 0o644); err != nil {

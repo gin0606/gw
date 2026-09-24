@@ -393,6 +393,40 @@ func TestAdd_DirectoryCollision(t *testing.T) {
 	}
 }
 
+func TestAdd_BrokenSymlinkCollision(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	markerFile := filepath.Join(t.TempDir(), "hook-ran.txt")
+	repo.WriteHook("pre-add", "#!/bin/sh\ntouch "+markerFile+"\n")
+
+	repoName := filepath.Base(repo.Root)
+	baseDir := filepath.Join(filepath.Dir(repo.Root), repoName+"-worktrees")
+	if err := os.MkdirAll(baseDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(baseDir, "feature-dangling")
+	if err := os.Symlink(filepath.Join(t.TempDir(), "missing"), link); err != nil {
+		t.Fatal(err)
+	}
+
+	_, stderr, exitCode := runGw(t, repo.Root, "add", "feature/dangling")
+
+	if exitCode != 1 {
+		t.Errorf("exit code = %d, want 1", exitCode)
+	}
+	if !strings.Contains(stderr, "path already exists") {
+		t.Errorf("expected 'path already exists' in stderr, got: %q", stderr)
+	}
+	if _, err := os.Stat(markerFile); err == nil {
+		t.Error("pre-add hook should not have been executed when the path is a broken symlink")
+	}
+	gitCmd := exec.Command("git", "rev-parse", "--verify", "--quiet", "refs/heads/feature/dangling")
+	gitCmd.Dir = repo.Root
+	if err := gitCmd.Run(); err == nil {
+		t.Error("branch should not have been created")
+	}
+}
+
 func TestAdd_OriginHeadNotSet_NewBranch(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 	repo.DeleteOriginHead()

@@ -41,13 +41,14 @@ func ComputePath(baseDir, branch string) (string, error) {
 	return filepath.Join(baseDir, sanitized), nil
 }
 
-// ValidatePath returns nil if path does not exist. Non-fs.ErrNotExist Stat
-// errors (permission denied, ENOTDIR on a parent, etc.) are propagated so
-// callers don't mistake them for "path is available".
+// ValidatePath returns nil if no entry exists at path. Symlinks are not
+// followed, so a broken symlink counts as an existing entry.
+// Non-fs.ErrNotExist Lstat errors (permission denied, ENOTDIR on a parent,
+// etc.) are propagated so callers don't mistake them for "path is available".
 func ValidatePath(path string) error {
-	_, err := os.Stat(path)
+	_, err := os.Lstat(path)
 	if err == nil {
-		return fmt.Errorf("directory already exists: %s", path)
+		return fmt.Errorf("path already exists: %s", path)
 	}
 	if !errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("validate path %s: %w", path, err)
