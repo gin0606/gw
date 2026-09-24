@@ -14,6 +14,8 @@ A git worktree wrapper with lifecycle hooks.
 
 ## Installation
 
+Requires git 2.36 or later.
+
 ```sh
 brew install gin0606/tap/gw
 ```

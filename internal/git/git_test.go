@@ -226,3 +226,51 @@ func TestListWorktrees_WithWorktrees(t *testing.T) {
 		t.Errorf("worktree with path %q and branch %q not found in %v", wtPath, "feature/test", worktrees)
 	}
 }
+
+func TestListWorktrees_PathWithNewline(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	wtPath := repo.CreateWorktree("wt\nnewline", "feature/newline")
+
+	worktrees, err := git.ListWorktrees(repo.Root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := []git.Worktree{
+		{Path: repo.Root, Branch: "main"},
+		{Path: wtPath, Branch: "feature/newline"},
+	}
+	if len(worktrees) != len(want) {
+		t.Fatalf("got %d worktrees %q, want %q", len(worktrees), worktrees, want)
+	}
+	for i := range want {
+		if worktrees[i] != want[i] {
+			t.Errorf("worktrees[%d] = %q, want %q", i, worktrees[i], want[i])
+		}
+	}
+}
+
+func TestListWorktrees_DetachedHead(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	branchPath := repo.CreateWorktree("wt-branch", "feature/branch")
+	detachedPath := repo.CreateDetachedWorktree("wt-detached")
+
+	worktrees, err := git.ListWorktrees(repo.Root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := []git.Worktree{
+		{Path: repo.Root, Branch: "main"},
+		{Path: branchPath, Branch: "feature/branch"},
+		{Path: detachedPath, Branch: ""},
+	}
+	if len(worktrees) != len(want) {
+		t.Fatalf("got %d worktrees %q, want %q", len(worktrees), worktrees, want)
+	}
+	for i := range want {
+		if worktrees[i] != want[i] {
+			t.Errorf("worktrees[%d] = %q, want %q", i, worktrees[i], want[i])
+		}
+	}
+}

@@ -125,9 +125,11 @@ func splitLines(s string) []string {
 	return strings.Split(s, "\n")
 }
 
-// ListWorktrees parses `git worktree list --porcelain` and returns all worktrees.
+// ListWorktrees parses `git worktree list --porcelain -z` and returns all worktrees.
+// With -z, each attribute is NUL-terminated and each entry ends with an extra
+// NUL, so paths containing newlines survive intact. Requires git 2.36+.
 func ListWorktrees(repoRoot string) ([]Worktree, error) {
-	cmd := exec.Command("git", "worktree", "list", "--porcelain")
+	cmd := exec.Command("git", "worktree", "list", "--porcelain", "-z")
 	cmd.Dir = repoRoot
 	out, err := cmd.Output()
 	if err != nil {
@@ -137,20 +139,18 @@ func ListWorktrees(repoRoot string) ([]Worktree, error) {
 	var worktrees []Worktree
 	var current Worktree
 
-	for _, line := range strings.Split(string(out), "\n") {
+	for _, field := range strings.Split(string(out), "\x00") {
 		switch {
-		case strings.HasPrefix(line, "worktree "):
+		case field == "":
 			if current.Path != "" {
 				worktrees = append(worktrees, current)
 			}
-			current = Worktree{Path: strings.TrimPrefix(line, "worktree ")}
-		case strings.HasPrefix(line, "branch refs/heads/"):
-			current.Branch = strings.TrimPrefix(line, "branch refs/heads/")
+			current = Worktree{}
+		case strings.HasPrefix(field, "worktree "):
+			current = Worktree{Path: strings.TrimPrefix(field, "worktree ")}
+		case strings.HasPrefix(field, "branch refs/heads/"):
+			current.Branch = strings.TrimPrefix(field, "branch refs/heads/")
 		}
-	}
-
-	if current.Path != "" {
-		worktrees = append(worktrees, current)
 	}
 
 	return worktrees, nil

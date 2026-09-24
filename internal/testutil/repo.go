@@ -89,6 +89,14 @@ func (r *TestRepo) CreateWorktree(name, branch string) string {
 	return wtPath
 }
 
+// CreateDetachedWorktree creates a git worktree with a detached HEAD and returns its absolute path.
+func (r *TestRepo) CreateDetachedWorktree(name string) string {
+	r.t.Helper()
+	wtPath := filepath.Join(filepath.Dir(r.Root), name)
+	gitCmd(r.t, r.Root, "worktree", "add", "--detach", wtPath)
+	return wtPath
+}
+
 // WriteConfig writes .gw/config with the given TOML content.
 func (r *TestRepo) WriteConfig(content string) {
 	r.t.Helper()

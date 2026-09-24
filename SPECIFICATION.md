@@ -8,7 +8,7 @@
 
 **リポジトリ検出:** worktree 内から実行された場合でも、メインリポジトリを正しく検出して動作する。
 
-**対応範囲:** bare repository には対応していない。
+**対応範囲:** bare repository には対応していない。`git worktree list -z` を使うため git 2.36 以降が必要。
 
 ---
 

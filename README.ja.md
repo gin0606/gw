@@ -14,6 +14,8 @@ git worktree のラッパー CLI。ライフサイクルフックで worktree �
 
 ## インストール
 
+git 2.36 以降が必要です。
+
 ```sh
 brew install gin0606/tap/gw
 ```

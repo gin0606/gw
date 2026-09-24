@@ -595,6 +595,31 @@ func TestRm_Basic(t *testing.T) {
 	}
 }
 
+// The worktree is created with git directly because a branch name cannot
+// carry a newline into the path.
+func TestRm_PathWithNewline(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	wtPath := repo.CreateWorktree("wt\nnewline", "feature/newline")
+
+	_, stderr, exitCode := runGw(t, repo.Root, "rm", wtPath)
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", exitCode, stderr)
+	}
+
+	gitList := exec.Command("git", "worktree", "list", "--porcelain", "-z")
+	gitList.Dir = repo.Root
+	out, err := gitList.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(out, []byte("worktree "+wtPath+"\x00")) {
+		t.Errorf("worktree %q still listed by git: %q", wtPath, out)
+	}
+	if _, err := os.Stat(wtPath); !os.IsNotExist(err) {
+		t.Errorf("worktree directory should have been removed: %q", wtPath)
+	}
+}
+
 func TestRm_UncommittedChanges_WithoutForce(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
