@@ -10,6 +10,8 @@ A git worktree wrapper with lifecycle hooks.
 
 **Design philosophy:** Keep the core thin. Features that can be achieved through hooks are not built into the tool itself.
 
+**Note:** Bare repositories are not supported.
+
 ## Installation
 
 ```sh
