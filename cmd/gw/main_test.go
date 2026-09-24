@@ -27,6 +27,14 @@ func TestMain(m *testing.M) {
 		panic(fmt.Sprintf("build failed: %v\n%s", err, out))
 	}
 
+	// Isolate every git the tests spawn (directly, via the gw binary, and
+	// via gw's hooks) from the developer's global and system git config.
+	// Child processes inherit os.Environ(), so setting it once here covers
+	// all of them. Mirrors internal/testutil. Set after the build above so
+	// the build itself still sees the developer's config (e.g. safe.directory).
+	os.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	os.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+
 	code := m.Run()
 	os.RemoveAll(dir)
 	os.Exit(code)
